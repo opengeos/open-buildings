@@ -17,5 +17,5 @@ If you don't have [pip](https://pip.pypa.io) installed, this [Python installatio
 To install open-buildings from sources, run this command in your terminal:
 
 ```
-pip install git+https://github.com/cholmes/open-buildings
+pip install git+https://github.com/opengeos/open-buildings
 ```

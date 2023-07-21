@@ -1,8 +1,8 @@
 site_name: open-buildings
 site_description: Tools for working with open building datasets
 site_author: cholmes
-site_url: https://cholmes.github.io/open-buildings
-repo_url: https://github.com/cholmes/open-buildings
+site_url: https://opengeos.github.io/open-buildings
+repo_url: https://github.com/opengeos/open-buildings
 
 copyright: "Copyright &copy; 2023 - 2023 Chris Holmes"
 
@@ -51,7 +51,7 @@ plugins:
           allow_errors: false
           ignore: ["conf.py"]
           execute_ignore: ["*ignore.ipynb"]
-          
+
 markdown_extensions:
     - admonition
     - abbr
@@ -80,7 +80,7 @@ nav:
     - Changelog: changelog.md
     - Report Issues: https://github.com/cholmes/open-buildings/issues
     - Examples:
-        - examples/intro.ipynb
+          - examples/intro.ipynb
     - API Reference:
           - open_buildings module: open_buildings.md
           - common module: common.md
