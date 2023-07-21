@@ -121,7 +121,7 @@ This will be an interesting to benchmark, with the options being more like DuckD
 I'll try to turn these into tickets, but just wanted to jot down some ways I've thought about evolving the script.
 
 -   Make GPQ a flag to pass in, not hardcoded.
--   Make parquet compression options a flag to pass in (and raise appropriate errors about which one can be used.
+-   Make parquet compression options a flag to pass in and raise appropriate errors about which one can be used.
 -   Add the splitting of multipolygons to the ogr process. This may need to make use of Fiona, but that may lose the speed of the [column-oriented API](https://gdal.org/development/rfc/rfc86_column_oriented_api.html) - so may be interesting to have both options to benchmark.
 -   Include ability to get the source CSV's directly from the cloud, unzip them and process them.
 -   Print out the file sizes of the resulting formats in the benchmark.
