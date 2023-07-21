@@ -23,7 +23,7 @@ it's likely not great code, but it's been fun to iterate on it and seems like it
 
 ## Installation
 
-Clone this repository and navigate into it:
+Install with pip:
 
 ```bash
 pip install open-buildings
