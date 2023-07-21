@@ -5,7 +5,7 @@
 **Tools for working with open building datasets**
 
 -   Free software: Apache Software License 2.0
--   Documentation: <https://opengeos.github.io/open_buildings>
+-   Documentation: <https://opengeos.github.io/open-buildings>
 -   Creator: [Chris Holmes](https://github.com/cholmes)
 
 ## Introduction
