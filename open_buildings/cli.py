@@ -3,13 +3,27 @@ import sys
 import click
 
 
-@click.command()
-def main(args=None):
+@click.group()
+def main():
     """Console script for open_buildings."""
-    click.echo("Replace this message by putting your code into "
-               "open_buildings.cli.main")
-    click.echo("See click documentation at https://click.palletsprojects.com/")
-    return 0
+    pass
+
+
+@main.command()
+@click.argument('name')
+def convert(name):
+    """Create a new building with the given name."""
+    click.echo(f"Creating a new building: {name}")
+    # Add your logic to create a new building here
+
+
+@main.command()
+@click.argument('building_id')
+def info(building_id):
+    """Get information about a specific building."""
+    click.echo(f"Getting information for building with ID: {building_id}")
+    click.echo("More info...")
+    # Add your logic to fetch building information here
 
 
 if __name__ == "__main__":
