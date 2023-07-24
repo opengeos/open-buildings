@@ -15,7 +15,8 @@ dataset, specifically to help translate it into [Cloud Native Geospatial](https:
 at <https://beta.source.coop/cholmes/google-open-buildings> so most people can just make use of those directly. But these are intended to
 show the process, and then they've expanded to be a way to benchmark performance. It's an odd mix right now, if I have time I'll try to
 factor out an independent 'performance' CLI to compare processes without being specific to google open buildings and mixing in functionality
-like splitting multipolygons.
+like splitting multipolygons. The repo is now named 'open-buildings', to allow it to potentially grow to be a set of useful scripts to work with
+other open buildings datasets.
 
 This is basically my first Python project, and certainly my first open source one. It is only possible due to ChatGPT, as I'm not a python
 programmer, and not a great programmer in general (coded professionally for about 2 years, then shifted to doing lots of other stuff). So
