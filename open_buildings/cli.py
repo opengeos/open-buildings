@@ -1,11 +1,11 @@
-"""Console script for open_buildings."""
+"""CLI to convert Google Open Building CSV files to alternate formats."""
 import sys
 import click
 
 
 @click.group()
 def main():
-    """Console script for open_buildings."""
+    """CLI to convert Google Open Building CSV files to alternate formats."""
     pass
 
 def handle_comma_separated(ctx, param, value):
@@ -18,20 +18,20 @@ def handle_comma_separated(ctx, param, value):
     '--processes',
     callback=handle_comma_separated,
     default='duckdb,pandas,ogr',
-    help="The processing methods to use.",
+    help="The processing methods to use. One or more of duckdb, pandas or ogr, in a comma-separated list. Default is duckdb,pandas,ogr.",
 )
 @click.option(
     '--formats',
     callback=handle_comma_separated,
     default='fgb,parquet,shp,gpkg',
-    help="The output formats.",
+    help="The output formats to benchmark. One or more of fgb, parquet, shp or gpkg, in a comma-separated list. Default is fgb,parquet,shp,gpkg.",
 )
 @click.option(
     '--skip-split-multis',
     is_flag=True,
     help="Whether to keep multipolygons as they are without splitting into their component polygons.",
 )
-@click.option('--no-gpq', is_flag=True, help="Disable GPQ conversion.")
+@click.option('--no-gpq', is_flag=True, help="Disable GPQ conversion. Timing will be faster, but not valid GeoParquet (until DuckDB adds support)")
 @click.option(
     '--verbose', is_flag=True, help="Whether to print detailed processing information."
 )
@@ -50,6 +50,7 @@ def benchmark(
     verbose,
     output_format,
 ):
+    """Runs the convert function on each of the supplied processes and formats, printing the timing of each as a table"""
     results = process_benchmark(
         input_path, output_directory, processes, formats, not skip_split_multis, verbose
     )
@@ -75,16 +76,16 @@ def benchmark(
     '--format',
     type=click.Choice(['fgb', 'parquet', 'gpkg', 'shp']),
     default='fgb',
-    help="The output format.",
+    help="The output format. The default is FlatGeobuf (fgb)",
 )
 @click.option(
-    '--overwrite', is_flag=True, help="Whether to overwrite existing output files."
+    '--overwrite', is_flag=True, help="Whether to overwrite any existing output files."
 )
 @click.option(
     '--process',
     type=click.Choice(['duckdb', 'pandas', 'ogr']),
     default='pandas',
-    help="The processing method to use.",
+    help="The processing method to use. The default is pandas.",
 )
 @click.option(
     '--skip-split-multis',
@@ -97,6 +98,7 @@ def benchmark(
 def convert(
     input_path, output_directory, format, overwrite, process, skip_split_multis, verbose
 ):
+    """Converts a CSV or a directory of CSV's to an alternate format. Input CSV's are assumed to be from Google's Open Buildings"""
     process_geometries(
         input_path,
         output_directory,
@@ -106,14 +108,6 @@ def convert(
         not skip_split_multis,
         verbose,
     )
-
-@main.command()
-@click.argument('building_id')
-def info(building_id):
-    """Get information about a specific building."""
-    click.echo(f"Getting information for building with ID: {building_id}")
-    click.echo("More info...")
-    # Add your logic to fetch building information here
 
 if __name__ == "__main__":
     sys.exit(main())  # pragma: no cover

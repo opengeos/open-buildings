@@ -30,16 +30,18 @@ Install with pip:
 pip install open-buildings
 ```
 
-Now things may sorta work? I spent close to an hour battling this and it seems to install in the local repo directory, but not
-in the venv / path for some reason. So theoretically you should be able to run `gob-tools benchmark 36b_buildings.csv test-output --format parquet`
-from anywhere and have it work. Right now it's only working for me in the repo directory. I think the safest thing is to just do
+This should add a CLI that you can then use. If it's working then:
 
 ```bash
-python google-buildings-cli.py benchmark 36b_buildings.csv test-output --format parquet
+open_buildings
 ```
 
-with the python file. Any help is more than welcome. Maybe next I'll try poetry? This python package management shit is really as bad as everyone says, even
-ChatGPT wasn't able to get me there.
+Should print out a help message. You then should be able run the CLI:
+
+
+```bash
+open_buildings benchmark 36b_buildings.csv test-output-dir --format parquet
+```
 
 The only CSV files that will work are those from Google's Open Buildings dataset.
 
@@ -67,30 +69,41 @@ A sample output for `benchmark`, run on 36b_buildings.csv, a 130 mb CSV file is:
 The full options can be found with `--help` after each command, and I'll put them here for reference:
 
 ```
-Usage: gob-tools convert [OPTIONS] INPUT_PATH OUTPUT_DIRECTORY
+Usage: open_buildings convert [OPTIONS] INPUT_PATH OUTPUT_DIRECTORY
+
+  Converts a CSV or a directory of CSV's to an alternate format. Input CSV's
+  are assumed to be from Google's Open Buildings
 
 Options:
   --format [fgb|parquet|gpkg|shp]
-                                  The output format.
-  --overwrite                     Whether to overwrite existing output files.
-  --process [duckdb|pandas|ogr]   The processing method to use.
+                                  The output format. The default is FlatGeobuf (fgb)
+  --overwrite                     Whether to overwrite any existing output files.
+  --process [duckdb|pandas|ogr]   The processing method to use. The default is 
+                                  pandas.
   --skip-split-multis             Whether to keep multipolygons as they are
-                                  without splitting into their component
-                                  polygons.
+                                  without splitting into their component polygons.
   --verbose                       Whether to print detailed processing
                                   information.
   --help                          Show this message and exit.
 ```
 
 ```
-Usage: gob-tools benchmark [OPTIONS] INPUT_PATH OUTPUT_DIRECTORY
+Usage: open_buildings benchmark [OPTIONS] INPUT_PATH OUTPUT_DIRECTORY
+
+  Runs the convert function on each of the supplied processes and formats,
+  printing the timing of each as a table
 
 Options:
-  --processes TEXT      The processing methods to use.
-  --formats TEXT        The output formats.
+  --processes TEXT      The processing methods to use. One or more of duckdb,
+                        pandas or ogr, in a comma-separated list. Default is
+                        duckdb,pandas,ogr.
+  --formats TEXT        The output formats to benchmark. One or more of fgb,
+                        parquet, shp or gpkg, in a comma-separated list.
+                        Default is fgb,parquet,shp,gpkg.
   --skip-split-multis   Whether to keep multipolygons as they are without
                         splitting into their component polygons.
-  --no-gpq              Disable GPQ conversion.
+  --no-gpq              Disable GPQ conversion. Timing will be faster, but not
+                        valid GeoParquet (until DuckDB adds support)
   --verbose             Whether to print detailed processing information.
   --output-format TEXT  The format of the output. Options: ascii, csv, json.
   --help                Show this message and exit.
