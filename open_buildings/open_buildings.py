@@ -12,7 +12,6 @@ import geopandas as gpd
 from shapely import wkt
 from shapely.geometry import mapping
 from openlocationcode import openlocationcode as olc
-from tabulate import tabulate
 
 # Global variable, that runs GPQ (https://github.com/planetlabs/gpq) after DuckDB writes the Parquet file.
 # This is necessary because DuckDB does not write the GeoParquet metadata (yet). Once DuckDB implements
