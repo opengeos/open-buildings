@@ -47,7 +47,7 @@ plugins:
     - mkdocs-jupyter:
           include_source: True
           ignore_h1_titles: True
-          execute: True
+          execute: true
           allow_errors: false
           ignore: ["conf.py"]
           execute_ignore: ["*ignore.ipynb"]
@@ -80,7 +80,7 @@ nav:
     - Changelog: changelog.md
     - Report Issues: https://github.com/cholmes/open-buildings/issues
     - Examples:
-          - examples/intro.ipynb
+          - examples/download_buildings.ipynb
     - API Reference:
           - open_buildings module: open_buildings.md
           - common module: common.md
