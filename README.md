@@ -109,7 +109,7 @@ Options:
   --help                Show this message and exit.
 ```
 
-**Warning** - note that `--no-gpq` doesn't actually work right now, see https://github.com/opengeos/open-buildings/issues/4 to track. It is just always set to true, so DuckDB times with Parquet will be inflated (you can change it in the Python code in a global variables).
+**Warning** - note that `--no-gpq` doesn't actually work right now, see https://github.com/opengeos/open-buildings/issues/4 to track. It is just always set to true, so DuckDB times with Parquet will be inflated (you can change it in the Python code in a global variables). Note also that the `ogr` process does not work with `--skip-split-multis`, but will just report very minimal times since it skips doing anything, see #5 to track.
 
 ## Format Notes
 
