@@ -5,3 +5,4 @@ geopandas
 shapely
 openlocationcode
 tabulate
+leafmap
