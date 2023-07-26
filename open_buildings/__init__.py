@@ -2,6 +2,6 @@
 
 __author__ = """Chris Holmes"""
 __email__ = 'chomie@gmail.com'
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 from .open_buildings import *

@@ -1,6 +1,7 @@
 """CLI to convert Google Open Building CSV files to alternate formats."""
 import sys
 import click
+from open_buildings import process_benchmark, process_geometries
 
 
 @click.group()
