@@ -109,7 +109,7 @@ Options:
   --help                Show this message and exit.
 ```
 
-**Warning** - note that `--no-gpq` doesn't actually work right now, see https://github.com/opengeos/open-buildings/issues/4 to track. It is just always set to true, so DuckDB times with Parquet will be inflated (you can change it in the Python code in a global variables). Note also that the `ogr` process does not work with `--skip-split-multis`, but will just report very minimal times since it skips doing anything, see #5 to track.
+**Warning** - note that `--no-gpq` doesn't actually work right now, see https://github.com/opengeos/open-buildings/issues/4 to track. It is just always set to true, so DuckDB times with Parquet will be inflated (you can change it in the Python code in a global variables). Note also that the `ogr` process does not work with `--skip-split-multis`, but will just report very minimal times since it skips doing anything, see https://github.com/opengeos/open-buildings/issues/5 to track.
 
 ## Format Notes
 
@@ -132,13 +132,6 @@ OGR was added later, and as of yet does not yet do the key step of splitting mul
 The next tool to write is to add country and admin level 1 attributes from GeoBoundaries. This was the trickiest step in processing v2 buildings.
 This will be an interesting to benchmark, with the options being more like DuckDB and PostGIS (pandas could try but may not work on the biggest ones), and potentially even big query. The next functionality to add after that will be do spatial partitioning, and perhaps after that add Iceberg and Delta Lake and compare those two (I didn't get to that step with the v2 buildings). And perhaps I'll also add a tool to easily grab any data from the partitioned geoparquet on source.coop and get it in the format you want.
 
-## Ideas
+## Contributing
 
-I'll try to turn these into tickets, but just wanted to jot down some ways I've thought about evolving the script.
-
--   Make GPQ a flag to pass in, not hardcoded.
--   Make parquet compression options a flag to pass in and raise appropriate errors about which one can be used.
--   Add the splitting of multipolygons to the ogr process. This may need to make use of Fiona, but that may lose the speed of the [column-oriented API](https://gdal.org/development/rfc/rfc86_column_oriented_api.html) - so may be interesting to have both options to benchmark.
--   Include ability to get the source CSV's directly from the cloud, unzip them and process them.
--   Print out the file sizes of the resulting formats in the benchmark.
--   Add GeoJSON? It seems like crap for this goal of working with huge files, but could be interesting to show performance and size characteristics. I do love GeoJSON, it's one of the best formats, but this is not the use case for it.
+All contributions are welcome, I love running open source projects. I'm clearly just learning to code Python, so there's no judgement about crappy code. And I'm super happy to learn from others about better code. Feel free to sound in on [the issues](https://github.com/opengeos/open-buildings/issues), make new ones, grab one, or make a PR. There's lots of low hanging fruit of things to add. And if you're just starting out programming don't hesitate to ask even basic things in the [discussions](https://github.com/opengeos/open-buildings/discussions).
