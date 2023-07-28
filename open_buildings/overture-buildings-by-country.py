@@ -31,13 +31,13 @@ conn = duckdb.connect(duckdb_path)
 conn.execute('LOAD spatial;')
 
 # This one is more 'right' and will work for all countries, but is likely slow with big files
-cursor = con.execute('SELECT DISTINCT country_iso FROM buildings')
+cursor = conn.execute('SELECT DISTINCT country_iso FROM buildings')
 countries = cursor.fetchall()
 
 for country in countries:
     country_code = country[0] # Extract the country code
     # Build the COPY command
-    copy_cmd = f"COPY (SELECT * FROM {table_name} WHERE country = '{country_code}' ORDER BY quadkey TO '{country_code}_temp.parquet' WITH (FORMAT PARQUET);"
+    copy_cmd = f"COPY (SELECT * FROM {table_name} WHERE country_iso = '{country_code}' ORDER BY quadkey) TO '{country_code}_temp.parquet' WITH (FORMAT PARQUET);"
 
     # Print the command if verbose is True
     if verbose:
