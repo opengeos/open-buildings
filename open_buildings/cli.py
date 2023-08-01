@@ -1,10 +1,11 @@
-"""CLI to convert Google Open Building CSV files to alternate formats."""
 import sys
+import os
 import click
 import pandas as pd
+import matplotlib.pyplot as plt
 from open_buildings import process_benchmark, process_geometries
+from datetime import datetime, timedelta
 from tabulate import tabulate
-
 
 @click.group()
 def main():
@@ -40,8 +41,9 @@ def handle_comma_separated(ctx, param, value):
 )
 @click.option(
     '--output-format',
+    callback=handle_comma_separated,
     default='ascii',
-    help="The format of the output. Options: ascii, csv, json.",
+    help="The format of the output. Options: ascii, csv, json, chart.",
 )
 def benchmark(
     input_path,
@@ -61,16 +63,34 @@ def benchmark(
     df = pd.DataFrame(results)
     df = df.pivot(index='process', columns='format', values='execution_time')
 
-    if output_format == 'ascii':
-        print(
-            tabulate(df, headers="keys", tablefmt="fancy_grid")
-        )  # or "grid" if you prefer
-    elif output_format == 'csv':
-        print(df.to_csv(index=False))
-    elif output_format == 'json':
-        print(df.to_json(orient='split', indent=4))
-    else:
-        raise ValueError('Invalid output format')
+    base_name = os.path.basename(input_path)
+    file_name, file_ext = os.path.splitext(base_name)
+
+    for format in output_format:
+        if format == 'csv':
+            df.to_csv(f"{output_directory}/{file_name}_benchmark.csv", index=False)
+        elif format == 'json':
+            df.to_json(f"{output_directory}/{file_name}_benchmark.json", orient='split', indent=4)
+        elif format == 'chart':
+            df.plot(kind='bar', rot=0)
+            plt.title(f'Benchmark for file: {base_name}')
+            plt.xlabel('Process')
+            plt.ylabel('Execution Time (in seconds)')
+            plt.tight_layout()
+            plt.savefig(f"{output_directory}/{file_name}_benchmark.png")
+            plt.clf()
+        elif format == 'ascii':
+            # Format execution in the data frame from seconds into a string time with
+            # minutes and seconds str(timedelta(seconds=execution_time))
+            df_formatted = df.copy()
+            for column in df_formatted.columns:
+                df_formatted[column] = df_formatted[column].apply(lambda x: (datetime.min + timedelta(seconds=x)).strftime('%M:%S.%f')[:-3])
+
+            print(f"\nTable for file: {base_name}")
+            print(tabulate(df_formatted, headers="keys", tablefmt="fancy_grid"))
+
+        else:
+            raise ValueError('Invalid output format')
 
 @main.command('convert')
 @click.argument('input_path', type=click.Path(exists=True))

@@ -27,6 +27,9 @@ RUN_GPQ_CONVERSION = True
 # the other GPQ compression options.
 PARQUET_COMPRESSION = 'snappy'
 
+# Don't run the DuckDB GPKG conversion if set to true, as it takes a long time, likely due to a bug.
+# It means longer runs and puts one big time on the graphs.
+SKIP_DUCK_GPKG = True
 
 @click.group()
 def cli():
@@ -185,10 +188,15 @@ def process_with_duckdb(
                 f"Skipping gpq convert on {output_file_path}. This means the output will be WKB, but it will need to be converted to GeoParquet."
             )
     elif format == 'gpkg':
-        c.execute(
-            f"COPY (SELECT * EXCLUDE geometry, ST_AsWKB(ST_GeomFromText(geometry)) AS geometry from buildings) \
-                TO '{output_file_path}' WITH  (FORMAT GDAL, DRIVER 'GPKG');"
-        )
+        if SKIP_DUCK_GPKG:
+            print(
+                f"Skipping duckdb-gpkg conversion on {output_file_path}, since SKIP_DUCK_GPKG is set to True. There is likely a bug, since it takes way longer and skews the graphs"
+            )
+        else:
+            c.execute(
+                f"COPY (SELECT * EXCLUDE geometry, ST_AsWKB(ST_GeomFromText(geometry)) AS geometry from buildings) \
+                    TO '{output_file_path}' WITH  (FORMAT GDAL, DRIVER 'GPKG');"
+            )
     elif format == 'shp':
         c.execute(
             f"COPY (SELECT * EXCLUDE geometry, ST_AsWKB(ST_GeomFromText(geometry)) AS geometry from buildings) \
@@ -454,11 +462,14 @@ def process_benchmark(
                 verbose,
             )
             execution_time = time.time() - start_time
+            if process == 'duckdb' and format == 'gpkg' and SKIP_DUCK_GPKG:
+                execution_time = 0
             results.append(
                 {
                     'process': process,
                     'format': format,
-                    'execution_time': str(timedelta(seconds=execution_time)),
+                    #'execution_time': str(timedelta(seconds=execution_time)),
+                    'execution_time': execution_time,
                 }
             )
     return results

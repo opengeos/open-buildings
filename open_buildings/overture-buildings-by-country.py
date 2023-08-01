@@ -34,8 +34,18 @@ conn.execute('LOAD spatial;')
 cursor = conn.execute('SELECT DISTINCT country_iso FROM buildings')
 countries = cursor.fetchall()
 
+# My initial run started with the US which is the biggest, so trying to mix up the order
+countries.reverse()
+
 for country in countries:
     country_code = country[0] # Extract the country code
+
+    # Check if the output file already exists
+    output_filename = f'{country_code}.parquet'
+    if os.path.exists(output_filename):
+        print(f'Output file for country {country_code} already exists, skipping...')
+        continue
+
     # Build the COPY command
     copy_cmd = f"COPY (SELECT * FROM {table_name} WHERE country_iso = '{country_code}' ORDER BY quadkey) TO '{country_code}_temp.parquet' WITH (FORMAT PARQUET);"
 
