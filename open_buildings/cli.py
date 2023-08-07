@@ -7,6 +7,7 @@ from open_buildings import process_benchmark, process_geometries
 from datetime import datetime, timedelta
 from tabulate import tabulate
 
+
 @click.group()
 def main():
     """CLI to convert Google Open Building CSV files to alternate formats."""

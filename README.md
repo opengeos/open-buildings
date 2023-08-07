@@ -52,18 +52,19 @@ So far there is just one 'tool', a CLI built with click that performs two functi
 -   `convert` takes as input either a single CSV file or a directory of CSV files, downloaded locally from the Google Buildings dataset. It can write out as GeoParquet, FlatGeobuf, GeoPackage and Shapefile, and can process the data using DuckDB, GeoPandas or OGR.
 -   `benchmark` runs the convert command against one or more different formats, and one or more different processes, and reports out how long each took.
 
-A sample output for `benchmark`, run on 36b_buildings.csv, a 130 mb CSV file is:
+A sample output for `benchmark`, run on 219_buildings.csv, a 101 mb CSV file is:
 
 ```
-╒═══════════╤════════════════╤════════════════╤════════════════╤════════════════╕
-│ process   │ fgb            │ gpkg           │ parquet        │ shp            │
-╞═══════════╪════════════════╪════════════════╪════════════════╪════════════════╡
-│ duckdb    │ 0:00:04.287083 │ 0:01:52.222495 │ 0:00:02.880891 │ 0:00:05.404221 │
-├───────────┼────────────────┼────────────────┼────────────────┼────────────────┤
-│ ogr       │ 0:00:03.620750 │ 0:00:08.528865 │ 0:00:02.319576 │ 0:00:03.609031 │
-├───────────┼────────────────┼────────────────┼────────────────┼────────────────┤
-│ pandas    │ 0:00:35.763740 │ 0:00:47.535597 │ 0:00:04.880124 │ 0:00:37.751942 │
-╘═══════════╧════════════════╧════════════════╧════════════════╧════════════════╛
+Table for file: 219_buildings.csv
+╒═══════════╤═══════════╤═══════════╤═══════════╤═══════════╕
+│ process   │ fgb       │ gpkg      │ parquet   │ shp       │
+╞═══════════╪═══════════╪═══════════╪═══════════╪═══════════╡
+│ duckdb    │ 00:02.330 │ 00:00.000 │ 00:01.866 │ 00:03.119 │
+├───────────┼───────────┼───────────┼───────────┼───────────┤
+│ ogr       │ 00:02.034 │ 00:07.456 │ 00:01.423 │ 00:02.491 │
+├───────────┼───────────┼───────────┼───────────┼───────────┤
+│ pandas    │ 00:18.184 │ 00:24.096 │ 00:02.710 │ 00:20.032 │
+╘═══════════╧═══════════╧═══════════╧═══════════╧═══════════╛
 ```
 
 The full options can be found with `--help` after each command, and I'll put them here for reference:
@@ -105,7 +106,8 @@ Options:
   --no-gpq              Disable GPQ conversion. Timing will be faster, but not
                         valid GeoParquet (until DuckDB adds support)
   --verbose             Whether to print detailed processing information.
-  --output-format TEXT  The format of the output. Options: ascii, csv, json.
+  --output-format TEXT  The format of the output. Options: ascii, csv, json,
+                        chart.
   --help                Show this message and exit.
 ```
 
@@ -121,11 +123,18 @@ GeoPackage is particularly slow with DuckDB, it's likely got a bit of a bug in i
 
 When I was processing V2 of the Google Building's dataset I did most of the initial work with GeoPandas, which was awesome, and has the best GeoParquet implementation. But the size of the data made its all in memory processing untenable. I ended up using PostGIS a decent but, but near the end of that process I discovered DuckDB, and was blown away by it's speed and ability to manage memory well. So for this tool I was mostly focused on those two.
 
-Note that GeoParquet from DuckDB by default runs [gpq](https://github.com/planetlabs/gpq) on the DuckDB Parquet output, which adds a good chunk of processing time. This makes it so the DuckDB processing output is slower than it would be if DuckDB natively wrote GeoParquet metadata, which I believe is on their roadmap. So that will likely emerge as the fastest benchmark time. In the code you can set RUN_GPQ_CONVERSION to false if you want to get a sense of it. In the above benchmark running the Parquet with DuckDB without GPQ conversion at the end resulted in a time of 0:00:01.845316
-
 Note also that currently DuckDB fgb, gpkg and shp output don't include projection information, so if you want to use the output then you'd need to run ogr2ogr on the output. It sounds like that may get fixed pretty soon, so I'm not going to add a step that includes the ogr conversion.
 
 OGR was added later, and as of yet does not yet do the key step of splitting multi-polygons, since it's just using ogr2ogr as a sub-process and I've yet to find a way to do that from the CLI (though knowing GDAL/OGR there probably is one - please let me know). To run the benchmark with it you need to do --skip-split-multis or else the times on it will be 0 (except for Shapefile, since it doesn't differentiate between multipolygons and regular polygons). I hope to add that functionality and get it on par, which may mean using Fiona. But it seems like that may affect performance, since Fiona doesn't use the [GDAL/OGR column-oriented API](https://gdal.org/development/rfc/rfc86_column_oriented_api.html).
+
+### Code customizations
+
+There are 3 options that you can set as global variables in the Python code, but are not yet CLI options. These are:
+
+* `RUN_GPQ_CONVERSION` - whether GeoParquet from DuckDB by default runs [gpq](https://github.com/planetlabs/gpq) on the DuckDB Parquet output, which adds a good chunk of processing time. This makes it so the DuckDB processing output is slower than it would be if DuckDB natively wrote GeoParquet metadata, which I believe is on their roadmap. So that will likely emerge as the fastest benchmark time. In the code you can set `RUN_GPQ_CONVERSION` in the python code to false if you want to get a sense of it. In the above benchmark running the Parquet with DuckDB without GPQ conversion at the end resulted in a time of .76 seconds. 
+* `PARQUET_COMPRESSION` - which compression to use for Parquet encoding. Note that not all processes support all compression options, and also the OGR converter currently ignores this option.
+* `SKIP_DUCK_GPKG` - whether to skip the GeoPackage conversion option on DuckDB, since it takes a long time to run.
+
 
 ## Roadmap
 
