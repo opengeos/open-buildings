@@ -6,17 +6,30 @@ import matplotlib.pyplot as plt
 from open_buildings import process_benchmark, process_geometries
 from datetime import datetime, timedelta
 from tabulate import tabulate
-
+import boto3  # Required for S3 operations
 
 @click.group()
 def main():
-    """CLI to convert Google Open Building CSV files to alternate formats."""
+    """CLI for Open Buildings operations."""
     pass
+
+@click.group()
+def google():
+    """Commands related to Google operations."""
+    pass
+
+@click.group()
+def overture():
+    """Commands related to Overture operations."""
+    pass
+
+main.add_command(google)
+main.add_command(overture)
 
 def handle_comma_separated(ctx, param, value):
     return value.split(',')
 
-@main.command('benchmark')
+@google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
 @click.argument('output_directory', type=click.Path(exists=True))
 @click.option(
@@ -81,19 +94,16 @@ def benchmark(
             plt.savefig(f"{output_directory}/{file_name}_benchmark.png")
             plt.clf()
         elif format == 'ascii':
-            # Format execution in the data frame from seconds into a string time with
-            # minutes and seconds str(timedelta(seconds=execution_time))
             df_formatted = df.copy()
             for column in df_formatted.columns:
                 df_formatted[column] = df_formatted[column].apply(lambda x: (datetime.min + timedelta(seconds=x)).strftime('%M:%S.%f')[:-3])
 
             print(f"\nTable for file: {base_name}")
             print(tabulate(df_formatted, headers="keys", tablefmt="fancy_grid"))
-
         else:
             raise ValueError('Invalid output format')
 
-@main.command('convert')
+@google.command('convert')
 @click.argument('input_path', type=click.Path(exists=True))
 @click.argument('output_directory', type=click.Path(exists=True))
 @click.option(
@@ -133,5 +143,36 @@ def convert(
         verbose,
     )
 
+
+@overture.command('download')
+@click.argument('destination_folder', type=click.Path())
+@click.option(
+    '--theme',
+    type=click.Choice(['buildings', 'admins', 'places', 'transportation']),
+    default='buildings',
+    help="Theme option for the files to download from S3. Default is buildings.",
+)
+def overture_download(destination_folder, theme):
+    """Download building files from S3 (can change theme for other overture data)."""
+
+    os.makedirs(destination_folder, exist_ok=True)
+
+    s3 = boto3.client('s3')
+    bucket = 'overturemaps-us-west-2'
+    prefix = f"release/2023-07-26-alpha.0/theme={theme}/"
+    
+    objects = s3.list_objects(Bucket=bucket, Prefix=prefix)
+    
+    for obj in objects.get('Contents', []):
+        print
+        file_name = os.path.basename(obj['Key'])
+        local_file_path = os.path.join(destination_folder, file_name)
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Downloading {file_name} to {destination_folder}")
+        s3.download_file(bucket, obj['Key'], local_file_path)
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Downloaded {file_name}")
+
 if __name__ == "__main__":
-    sys.exit(main())  # pragma: no cover
+    sys.exit(main())

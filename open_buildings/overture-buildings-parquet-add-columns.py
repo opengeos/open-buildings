@@ -13,7 +13,6 @@
 # add an option to pull it remote if not present). This also would
 # ideally work with any of the Overture data types, and let you choose
 # your table names.
-
 import os
 import duckdb
 import time
@@ -21,23 +20,15 @@ import tempfile
 import subprocess
 import glob
 from duckdb.typing import *
+import mercantile
+import shutil
 
 def lat_lon_to_quadkey(lat: DOUBLE, lon: DOUBLE, level: INTEGER) -> VARCHAR:
-    lat = (lat + 90.0) / 180.0  # Normalize lat to 0-1 range
-    lon = (lon + 180.0) / 360.0  # Normalize lon to 0-1 range
-
-    lat_bin = int(lat * (1 << level))  # Convert normalized lat to binary
-    lon_bin = int(lon * (1 << level))  # Convert normalized lon to binary
-
-    quadKey = ""
-    for i in range(level, 0, -1):
-        digit = 0
-        mask = 1 << (i - 1)
-        if (lon_bin & mask) != 0:
-            digit += 1
-        if (lat_bin & mask) != 0:
-            digit += 2
-        quadKey += str(digit)
+    # Convert latitude and longitude to tile using mercantile
+    tile = mercantile.tile(lon, lat, level)
+    
+    # Convert the tile to a quadkey
+    quadKey = mercantile.quadkey(tile)
     return quadKey
 
 def midpoint(minval: DOUBLE, maxval: DOUBLE) -> DOUBLE:
@@ -98,8 +89,8 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
         for file_path in [output_db_path, output_parquet_path]:
             if os.path.exists(file_path):
                 os.remove(file_path)
-                
-    print(f"Processing file {input_parquet_path}")
+    timestamp = time.time()
+    print(f"Starting processing for file {input_parquet_path} at {time.ctime(timestamp)}")
     
     # Connect to DuckDB
     con = duckdb.connect(output_db_path)
@@ -118,16 +109,19 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
     # Write out to Parquet
     con.execute(f"COPY (SELECT * FROM buildings ORDER BY quadkey) TO '{output_parquet_path}' WITH (FORMAT Parquet)")
     
-    # Create a temporary file
-    temp_file = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False)
-    temp_file.close()  # Close the file so gpq can open it
+    if (True):
+        print(f"Converting to geoparquet: {output_parquet_path}")
+        # Create a temporary file
+        temp_file = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False)
+        temp_file.close()  # Close the file so gpq can open it
 
-    # Convert the Parquet file to a GeoParquet file using gpq
-    gpq_cmd = ['gpq', 'convert', f'{output_parquet_path}', temp_file.name]
-    subprocess.run(gpq_cmd, check=True)
+        # Convert the Parquet file to a GeoParquet file using gpq
+        gpq_cmd = ['gpq', 'convert', f'{output_parquet_path}', temp_file.name]
+        subprocess.run(gpq_cmd, check=True)
 
-    # Rename the temp file to the final filename
-    os.rename(temp_file.name, f'{output_parquet_path}')
+        # Rename the temp file to the final filename
+        shutil.move(temp_file.name, f'{output_parquet_path}')
+        #os.rename(temp_file.name, f'{output_parquet_path}')
 
     print(f"Processing complete for file {input_parquet_path}")
 
@@ -141,6 +135,6 @@ def process_parquet_files(input_path, output_folder, country_parquet_path, overw
 
 # Call the function
 input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
-output_folder = '/Users/cholmes/geodata/overture/processed-buildings'
+output_folder = '/Volumes/fastdata/overture/refined-parquet/'
 country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
 process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=True, add_country_iso_option=True)
