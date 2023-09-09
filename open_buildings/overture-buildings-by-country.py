@@ -1,3 +1,16 @@
+"""
+This script takes a DuckDB database with a buildings table and converts it to GeoParquet 
+files partitioned on first country and then quadkey. The buildings table must have a
+country_iso field and quadkey field, populated by overture-buildings-parquet-add-columns.py.
+The main function is process_db(), and it will take as input a maximum number of rows per
+file and a row group size for the Parquet files. It will then iterate through the countries
+in the database and partition the buildings table into GeoParquet files for each country.
+If the number of rows for a country is greater than the maximum number of rows per file,
+it will partition the country into quadkeys and create GeoParquet files for each quadkey.
+Those quadkeys will be further partitioned if necessary until the number of rows for a
+quadkey is less than or equal to the maximum number of rows per file. 
+"""
+
 import duckdb
 import datetime
 import subprocess

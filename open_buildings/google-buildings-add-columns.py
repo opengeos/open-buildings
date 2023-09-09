@@ -21,11 +21,15 @@ import subprocess
 import glob
 from duckdb.typing import *
 import mercantile
+from shapely import wkt
 import shutil
 
-def lat_lon_to_quadkey(lat: DOUBLE, lon: DOUBLE, level: INTEGER) -> VARCHAR:
-    # Convert latitude and longitude to tile using mercantile
-    tile = mercantile.tile(lon, lat, level)
+def lat_lon_to_quadkey(wkt_point: VARCHAR, level: INTEGER) -> VARCHAR:
+
+    geom = wkt.loads(wkt_point)
+
+    # convert geom to tile
+    tile = mercantile.tile(geom.x, geom.y, level)
     
     # Convert the tile to a quadkey
     quadKey = mercantile.quadkey(tile)
@@ -37,7 +41,7 @@ def midpoint(minval: DOUBLE, maxval: DOUBLE) -> DOUBLE:
 def add_quadkey(con):
 
     # Register Python UDFs
-    con.create_function('lat_lon_to_quadkey', lat_lon_to_quadkey, [DOUBLE, DOUBLE, INTEGER], VARCHAR)
+    con.create_function('lat_lon_to_quadkey', lat_lon_to_quadkey, [VARCHAR, INTEGER], VARCHAR)
     con.create_function('midpoint', midpoint, [DOUBLE, DOUBLE], DOUBLE)
 
     # Add a quadkey column to the table if it doesn't exist
@@ -46,9 +50,7 @@ def add_quadkey(con):
     # Update the quadkey column
     con.execute("""
     UPDATE buildings 
-    SET quadkey = lat_lon_to_quadkey(
-        midpoint(bbox.miny, bbox.maxy), 
-        midpoint(bbox.minx, bbox.maxx), 
+    SET quadkey = lat_lon_to_quadkey(ST_Centroid(ST_GeomFromWKB(geometry)),  
         12
     );
     """)
@@ -73,15 +75,15 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
     os.makedirs(output_folder, exist_ok=True)
     
     # Get unique identifier from file name
-    unique_id = os.path.basename(input_parquet_path).split('_')[-1]
+    file_id = os.path.basename(input_parquet_path)
     
     # Define output paths
-    output_db_path = os.path.join(output_folder, f'{unique_id}.duckdb')
-    output_parquet_path = os.path.join(output_folder, f'{unique_id}.parquet')
+    output_db_path = os.path.join(output_folder, f'{file_id}.duckdb')
+    output_parquet_path = os.path.join(output_folder, f'{file_id}')
     
     # Check if output files exist
     if (os.path.exists(output_db_path) or os.path.exists(output_parquet_path)) and not overwrite:
-        print(f'Files with ID {unique_id} already exist. Skipping...')
+        print(f'Files with ID {file_id} already exist. Skipping...')
         return
     
     # Overwrite mode: remove existing files
@@ -125,16 +127,22 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
 
     print(f"Processing complete for file {input_parquet_path}")
 
+    remove_duckdb = True
+
+    # remove duckdb file
+    if (remove_duckdb):
+        os.remove(output_db_path)
+
 def process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=False, add_country_iso_option=False):
     # If input_path is a directory, process all Parquet files in it
     if os.path.isdir(input_path):
-        for file in glob.glob(os.path.join(input_path, "*")):
+        for file in glob.glob(os.path.join(input_path, "*.parquet")):
             process_parquet_file(file, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option)
     else:
         process_parquet_file(input_path, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option)
 
-# Call the function 
-input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
-output_folder = '/Volumes/fastdata/overture/refined-parquet/'
+# Call the function
+input_path = '/Users/cholmes/geodata/google-buildings-v3/geoparquet/'
+output_folder = '/Users/cholmes/geodata/google-buildings-v3/geoparquet-columns'
 country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
 process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=True, add_country_iso_option=True)
