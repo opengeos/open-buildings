@@ -82,5 +82,4 @@ nav:
     - Examples:
           - examples/download_buildings.ipynb
     - API Reference:
-          - open_buildings module: open_buildings.md
           - common module: common.md
