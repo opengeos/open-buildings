@@ -53,6 +53,9 @@ setup(
     keywords='open_buildings',
     name='open-buildings',
     packages=find_packages(),
+    package_data={
+        'open_buildings': ['google/*', 'overture/*' ],
+    },
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
