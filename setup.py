@@ -26,7 +26,7 @@ test_requirements = [ ]
 
 setup(
     author="Chris Holmes",
-    author_email='homie@gmail.com',
+    author_email='cholmes@9eo.org',
     python_requires='>=3.8',
     classifiers=[
         'Intended Audience :: Developers',
@@ -52,7 +52,7 @@ setup(
     include_package_data=True,
     keywords='open_buildings',
     name='open-buildings',
-    packages=find_packages(include=['.']),
+    packages=find_packages(),
     setup_requires=setup_requirements,
     test_suite='tests',
     tests_require=test_requirements,
