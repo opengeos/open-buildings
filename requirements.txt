@@ -6,3 +6,5 @@ shapely
 openlocationcode
 tabulate
 leafmap
+boto3
+mercantile
