@@ -111,7 +111,7 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
     # Write out to Parquet
     con.execute(f"COPY (SELECT * FROM buildings ORDER BY quadkey) TO '{output_parquet_path}' WITH (FORMAT Parquet)")
     
-    if (True):
+    if (False):
         print(f"Converting to geoparquet: {output_parquet_path}")
         # Create a temporary file
         temp_file = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False)
@@ -127,7 +127,7 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
 
     print(f"Processing complete for file {input_parquet_path}")
 
-    remove_duckdb = True
+    remove_duckdb = False
 
     # remove duckdb file
     if (remove_duckdb):

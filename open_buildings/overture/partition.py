@@ -72,6 +72,38 @@ def convert_pandas(input_filename, rg_size, verbose):
     except Exception as e:
         print(f"Error processing {input_filename}: {e}")
     
+def convert_ogr(input_filename, rg_size, verbose):
+    output_filename = input_filename.replace(".parquet", "_geo.parquet")
+    rg_cmd = f"ROW_GROUP_SIZE={rg_size}"
+    cmd = [
+        'ogr2ogr',
+        '-f',
+        'Parquet',
+        output_filename,
+        input_filename,
+   #     '-oo',
+   #     rg_cmd,
+        '-oo',
+        'GEOM_POSSIBLE_NAMES=geometry', ]
+
+    # print the ogr2ogr command that will be run
+    if verbose:
+        print("ogr2ogr command:")
+        print(' '.join(cmd))
+
+    # Run the command
+    subprocess.run(cmd, check=True)
+
+    # delete the original file
+    os.remove(input_filename)
+    # Rename (move) the output file to the input filename
+    shutil.move(output_filename, input_filename)
+    print(f"Finished processing {input_filename} at {time.ctime()}")
+
+    if verbose:
+        print(f"Converted {input_filename} to {output_filename} using ogr2ogr.")
+
+ 
 
 def fetch_quadkeys(conn, table_name, country_code, length, verbose, prev_qk=""):
     query = f"SELECT DISTINCT SUBSTR(quadkey, 1, {length}) FROM {table_name} WHERE country_iso = '{country_code}'"
@@ -87,6 +119,9 @@ def convert_to_geoparquet(parquet_path, geo_conversion, row_group_size, verbose)
     elif geo_conversion == 'pandas':
         convert_pandas(parquet_path, row_group_size, verbose)
         print_verbose(f"File: {parquet_path} written with pandas", verbose)
+    elif geo_conversion == 'ogr':
+        convert_ogr(parquet_path, row_group_size, verbose)
+        print_verbose(f"File: {parquet_path} written with ogr", verbose)
     else:
         print_verbose(f"File: {parquet_path} written without converting to GeoParquet", verbose)
 
@@ -121,24 +156,29 @@ def process_quadkey_recursive(conn, table_name, country_code, output_folder, len
 @click.command()
 @click.argument('duckdb-path', type=click.Path(exists=True))
 @click.option('--output-folder', default=os.getcwd(), type=click.Path(), help='Folder to store the output files')
-@click.option('--geo-conversion', default='gpq', type=click.Choice(['gpq', 'none', 'pandas'], case_sensitive=False))
+@click.option('--geo-conversion', default='gpq', type=click.Choice(['gpq', 'none', 'pandas', 'ogr'], case_sensitive=False))
 @click.option('--verbose', is_flag=True, default=False, help='Print verbose output')
 @click.option('--max-per-file', default=10000000, type=int, help='Maximum number of rows per file')
 @click.option('--row-group-size', default=10000, type=int, help='Row group size for Parquet files')
-def process_db(duckdb_path, output_folder, geo_conversion, verbose, max_per_file, row_group_size):
-    table_name = 'buildings'
+@click.option('--hive', is_flag=True, default=False, help='Output files in Hive format (folder structure)')
+@click.option('--table-name', default='buildings', type=str, help='Name of the table to process')
+def process_db(duckdb_path, output_folder, geo_conversion, verbose, max_per_file, row_group_size, hive, table_name):
     # create output folder if it does not exist
     os.makedirs(output_folder, exist_ok=True)
     conn = duckdb.connect(duckdb_path)
     conn.execute('LOAD spatial;')
-    cursor = conn.execute('SELECT DISTINCT country_iso FROM buildings')
+    cursor = conn.execute(f'SELECT DISTINCT country_iso FROM {table_name}')
     countries = cursor.fetchall()
     
     print_verbose(f'Found {len(countries)} unique countries', verbose)
     #countries.reverse()
     for country in countries:
         country_code = country[0]
-        output_filename = os.path.join(output_folder, f'{country_code}.parquet')
+        write_folder = output_folder
+        if (hive):
+            write_folder = os.path.join(output_folder, f'country_iso={country_code}')
+            os.makedirs(write_folder, exist_ok=True)
+        output_filename = os.path.join(write_folder, f'{country_code}.parquet')
         if os.path.exists(output_filename):
             print_verbose(f"Output file for country {country_code} already exists, skipping...", verbose)
             continue

@@ -125,20 +125,6 @@ def quad2json(quadkey_input):
     result = quadkey_to_geojson(quadkey_input)
     click.echo(json.dumps(result, indent=2))
 
-@click.command(name="download")
-@click.argument('geojson_input', type=click.File('r'), required=False)
-@click.option('--only-quadkey', is_flag=True, help='Include only the quadkey in the WHERE clause.')
-@click.option('--format', default=None, type=click.Choice(['shapefile', 'geojson', 'geopackage', 'flatgeobuf', 'parquet']), help='Output format for the SQL query. Defaults to the extension of the dst file.')
-@click.option('--generate-sql', is_flag=True, default=False, help='Generate and print SQL without executing.')
-@click.option('--dst', type=str, default="buildings.parquet", help='Destination file name (without extension) or full path for the output.')
-@click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
-@click.option('--time-report', is_flag=True, default=True, help='Report how long the operation took to run.')
-@click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
-@click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-@click.option('--run-gpq', is_flag=True, default=True, help='Run gpq conversion to ensure the output is valid GeoParquet.')
-@click.option('--data-path', type=str, default="s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-2/*.parquet", help='Path to the root of the buildings parquet data.')
-@click.option('--hive-partitioning', is_flag=True, default=False, help='Use Hive partitioning when reading the parquet data.')
-@click.option('--country_iso', type=str, default=None, help='Country ISO code to filter the data by.')
 
 def download(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso):
     """Download buildings data based on the input GeoJSON."""
@@ -257,7 +243,7 @@ cli.add_command(quadkey)
 cli.add_command(WKT)
 cli.add_command(sql)
 cli.add_command(quad2json)
-cli.add_command(download)
+#cli.add_command(download)
 
 if __name__ == '__main__':
     cli()
