@@ -8,7 +8,11 @@ import duckdb
 import time
 import datetime
 import os
+import pandas as pd
+import geopandas as gpd
 import subprocess
+from shapely import wkb
+import shutil
 
 
 def geojson_to_quadkey(data: dict) -> str:
@@ -126,8 +130,7 @@ def quad2json(quadkey_input):
     click.echo(json.dumps(result, indent=2))
 
 
-def download(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso):
-    """Download buildings data based on the input GeoJSON."""
+def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso):
 
     def print_timestamped_message(message):
         if not silent:
@@ -151,17 +154,16 @@ def download(geojson_input, only_quadkey, format, generate_sql, dst, silent, tim
 
     print_timestamped_message(f"Querying and downloading data with Quadkey: {quadkey}")
     hive_value = 1 if hive_partitioning else 0
-    base_sql = f"select id, country_iso, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
+    base_sql = f"select * EXCLUDE geometry, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
     if country_iso:
         where_clause += f"country_iso = '{country_iso}' AND "
     where_clause += f"quadkey LIKE '{quadkey}%'"
-    if not only_quadkey:
-        where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
+    where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
 
     output_extension = {
         'shapefile': '.shp',
-        'geojson': '.geojson',
+        'geojson': 'json',
         'geopackage': '.gpkg',
         'flatgeobuf': '.fgb',
         'parquet': '.parquet'
@@ -202,27 +204,24 @@ def download(geojson_input, only_quadkey, format, generate_sql, dst, silent, tim
             print_timestamped_message(copy_statement)
         if not generate_sql:
             conn.execute(f"COPY buildings TO '{dst}' WITH (FORMAT Parquet);")
-            if run_gpq:
-                print_timestamped_message(
-                    f"Running gpq convert on {dst}. This takes extra time but ensures the output is valid GeoParquet."
-                )
-                base_name, ext = os.path.splitext(dst)
-                temp_output_file_path = base_name + '_temp' + ext
+            try:
+                df = pd.read_parquet(dst)
 
-                # convert from parquet file with a geometry column named wkb to GeoParquet
-                command = ['gpq', 'convert', dst, temp_output_file_path]
-                gpq_start_time = time.time()
-                subprocess.run(command, check=True)
-                os.rename(temp_output_file_path, dst)
-                gpq_end_time = time.time()
-                gpq_elapsed_time = gpq_end_time - gpq_start_time
-                
+                # Convert WKB geometry to geopandas geometry
+                df['geometry'] = df['geometry'].apply(wkb.loads, hex=True)
+                gdf = gpd.GeoDataFrame(df, geometry='geometry', crs="EPSG:4326")
+                # Change output file the input_filename with .parquet replaced with _geo.parquet
+                output_filename = dst.replace(".parquet", "_geo.parquet")
+            
+                gdf.to_parquet(output_filename)
+                # delete the original file
+                os.remove(dst)
+                # Rename (move) the output file to the input filename
+                shutil.move(output_filename, dst)
                 if verbose:
-                    print_timestamped_message(f"Time taken to run gpq: {gpq_elapsed_time:.2f} seconds")
-            else:
-                print_timestamped_message(
-                    f"Skipping gpq convert on {output_file_path}. This means the output Parquet will be WKB, but it will need to be converted to GeoParquet."
-                )
+                    print_timestamped_message(f"Finished processing {dst} at {time.ctime()}")
+            except Exception as e:
+                print(f"Error processing {dst} to geoparquet: {e}")
     else:
         gdal_format = {
             'shapefile': 'ESRI Shapefile',
@@ -233,7 +232,7 @@ def download(geojson_input, only_quadkey, format, generate_sql, dst, silent, tim
         conn.execute(f"COPY buildings TO '{dst}' WITH (FORMAT GDAL, DRIVER '{gdal_format[format]}');")
     end_time = time.time()
 
-    if time_report:
+    if verbose:
         elapsed_time = end_time - start_time
         print_timestamped_message(f"Operation took {elapsed_time:.2f} seconds.")      
 

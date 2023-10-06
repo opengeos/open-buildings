@@ -1,18 +1,15 @@
-# This script is used to take an Overture Parquet file and add columns
-# useful for partitioning - it can put in both a quadkey and the country
-# ISO code. And then it will write out parquet and use gpq to convert the
-# parquet to geoparquet.
-#
-# There is much more to do, my plan is to incorporate it into the open_buildings
-# CLI and let people pick which of the columns they want to add. Also could
-# be nice to add the ability to get the data downloaded - this just assumes
-# you've already got it. Also need to add the command to create the 
-# countries.parquet, but it's basically the one in https://github.com/OvertureMaps/data/blob/main/duckdb_queries/admins.sql
-# but saved to parquet. You also could just use that command to pull it
-# directly into your duckdb database, and change this code (perhaps we
-# add an option to pull it remote if not present). This also would
-# ideally work with any of the Overture data types, and let you choose
-# your table names.
+# This script is a slightly more generic version of the overture add_columns.py. There's
+# some chance it could be completely generic, but I was just trying to work on google buildings
+# so put it under there. The main difference is that it doesn't use the midpoint of the 
+# bbox struct, since that's unique to overture. It just uses the centroid of the geometry.
+# That could likely work just as well if not better for overture too, so we likely can just
+# get rid of that.
+# The other thing that would be nice to make it truly generic is to be able to supply the 
+# table name, since this should work fine with other types of data. Could also just call it
+# 'features' by default, the table name doesn't really matter in these processings. Should probably check
+# to be sure it works with lines and points too. So this could use clean up, also just
+# removing the 'midpoint' code. 
+
 import os
 import duckdb
 import time

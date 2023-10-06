@@ -5,6 +5,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
+from open_buildings.overture.add_columns import process_parquet_files
+from open_buildings.overture.partition import process_db
 from datetime import datetime, timedelta
 from tabulate import tabulate
 import boto3  # Required for S3 operations
@@ -38,20 +40,33 @@ def handle_comma_separated(ctx, param, value):
 
 @tools.command(name="get_buildings")
 @click.argument('geojson_input', type=click.File('r'), required=False)
-@click.option('--only-quadkey', is_flag=True, help='Include only the quadkey in the WHERE clause.')
 @click.option('--format', default=None, type=click.Choice(['shapefile', 'geojson', 'geopackage', 'flatgeobuf', 'parquet']), help='Output format for the SQL query. Defaults to the extension of the dst file.')
-@click.option('--generate-sql', is_flag=True, default=False, help='Generate and print SQL without executing.')
-@click.option('--dst', type=str, default="buildings.parquet", help='Destination file name (without extension) or full path for the output.')
+@click.option('--dst', type=str, default="buildings.json", help='Destination file name (without extension) or full path for the output.')
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
-@click.option('--time-report', is_flag=True, default=True, help='Report how long the operation took to run.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
 @click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-@click.option('--run-gpq', is_flag=True, default=True, help='Run gpq conversion to ensure the output is valid GeoParquet.')
-@click.option('--data-path', type=str, default="s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-2/*.parquet", help='Path to the root of the buildings parquet data.')
-@click.option('--hive-partitioning', is_flag=True, default=False, help='Use Hive partitioning when reading the parquet data.')
+@click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query')
 @click.option('--country_iso', type=str, default=None, help='Country ISO code to filter the data by.')
-def get_buildings(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso):
-    download_buildings(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso)
+def get_buildings(geojson_input, format, dst, silent, overwrite, verbose, source, country_iso):
+    """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online.
+    Defaults to GeoJSON output in a file called buildings.json. It's recommended to set the --dst flat to
+    output. """
+    # map source of google and overture to values for data_path and hive
+    data_path = None
+    hive_partitioning = False
+    # case insensitive matching
+    if source.lower() == "google":
+        data_path = "s3://us-west-2.opendata.source.coop/google-research-open-buildings/geoparquet-by-country/*/*.parquet"
+        hive_partitioning = True
+    elif source.lower() == "overture":
+        data_path = "s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-hive/*/*.parquet"
+        hive_partitioning = True
+    else:
+        raise ValueError('Invalid source')
+    
+    
+    generate_sql = False
+    download_buildings(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
@@ -167,6 +182,24 @@ def convert(
         verbose,
     )
 
+@overture.command('add_columns')
+@click.argument('input_folder', type=click.Path(exists=True))
+@click.argument('output_folder', type=click.Path())
+@click.argument('country_parquet_path', type=click.Path(exists=True))
+@click.option('--overwrite', is_flag=True, help="Whether to overwrite any existing output files.")
+@click.option('--no-quadkey', is_flag=True, help="Whether to add a quadkey column to the output.")
+@click.option('--no-country-iso', is_flag=True, help="Whether to add a country_iso column to the output.")
+@click.option('--verbose', is_flag=True, help="Whether to print detailed processing information.")
+def add_columns(
+    input_folder, output_folder, country_parquet_path, overwrite, no_quadkey, no_country_iso, verbose
+):
+    """Adds columns to the input Overture parquet files, using Overture country for admin boundaries, outputting GeoParquet ordered by quadkey the output folder"""
+    add_quadkey = not no_quadkey
+    add_country_iso = not no_country_iso
+    """Adds columns to the input parquet files, outputting to the output folder"""
+    process_parquet_files(
+        input_folder, output_folder, country_parquet_path, overwrite, add_quadkey, add_country_iso, verbose
+    )
 
 @overture.command('download')
 @click.argument('destination_folder', type=click.Path())
@@ -197,6 +230,20 @@ def overture_download(destination_folder, theme):
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] Downloaded {file_name}")
+
+@overture.command('partition')
+@click.argument('duckdb-path', type=click.Path(exists=True))
+@click.option('--output-folder', default=os.getcwd(), type=click.Path(), help='Folder to store the output files')
+@click.option('--geo-conversion', default='gpq', type=click.Choice(['gpq', 'none', 'pandas', 'ogr'], case_sensitive=False))
+@click.option('--verbose', is_flag=True, default=False, help='Print verbose output')
+@click.option('--max-per-file', default=10000000, type=int, help='Maximum number of rows per file')
+@click.option('--row-group-size', default=10000, type=int, help='Row group size for Parquet files')
+@click.option('--hive', is_flag=True, default=False, help='Output files in Hive format (folder structure)')
+@click.option('--table-name', default='buildings', type=str, help='Name of the table to process')
+def partition(duckdb_path, output_folder, geo_conversion, verbose, max_per_file, row_group_size, hive, table_name):
+    """Partition a DuckDB database of all overture data by country_iso"""
+    process_db(duckdb_path, output_folder, geo_conversion, verbose, max_per_file, row_group_size, hive, table_name)
+
 
 if __name__ == "__main__":
     sys.exit(main())

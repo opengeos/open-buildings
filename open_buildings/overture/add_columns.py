@@ -2,17 +2,8 @@
 # useful for partitioning - it can put in both a quadkey and the country
 # ISO code. And then it will write out parquet and use gpq to convert the
 # parquet to geoparquet.
-#
-# There is much more to do, my plan is to incorporate it into the open_buildings
-# CLI and let people pick which of the columns they want to add. Also could
-# be nice to add the ability to get the data downloaded - this just assumes
-# you've already got it. Also need to add the command to create the 
-# countries.parquet, but it's basically the one in https://github.com/OvertureMaps/data/blob/main/duckdb_queries/admins.sql
-# but saved to parquet. You also could just use that command to pull it
-# directly into your duckdb database, and change this code (perhaps we
-# add an option to pull it remote if not present). This also would
-# ideally work with any of the Overture data types, and let you choose
-# your table names.
+
+
 import os
 import duckdb
 import time
@@ -68,7 +59,7 @@ def add_country_iso(con, country_parquet_path):
     WHERE ST_Intersects(ST_GeomFromWKB(countries.geometry), ST_GeomFromWKB(buildings.geometry))
     """)
 
-def process_parquet_file(input_parquet_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=False, add_country_iso_option=False):
+def process_parquet_file(input_parquet_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=False, add_country_iso_option=False, verbose=False):
     # Ensure output_folder exists
     os.makedirs(output_folder, exist_ok=True)
     
@@ -109,6 +100,7 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
     # Write out to Parquet
     con.execute(f"COPY (SELECT * FROM buildings ORDER BY quadkey) TO '{output_parquet_path}' WITH (FORMAT Parquet)")
     
+    #TODO: turn this into an option to convert to geoparquet or not
     if (True):
         print(f"Converting to geoparquet: {output_parquet_path}")
         # Create a temporary file
@@ -125,16 +117,16 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
 
     print(f"Processing complete for file {input_parquet_path}")
 
-def process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=False, add_country_iso_option=False):
+def process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=False, add_country_iso_option=False, verbose=False):
     # If input_path is a directory, process all Parquet files in it
     if os.path.isdir(input_path):
         for file in glob.glob(os.path.join(input_path, "*")):
-            process_parquet_file(file, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option)
+            process_parquet_file(file, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option, verbose)
     else:
-        process_parquet_file(input_path, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option)
+        process_parquet_file(input_path, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option, verbose)
 
-# Call the function 
-input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
-output_folder = '/Volumes/fastdata/overture/refined-parquet/'
-country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
-process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=True, add_country_iso_option=True)
+# Call the function - uncomment if you want to call this directly from python and put values in here.
+#input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
+#output_folder = '/Volumes/fastdata/overture/refined-parquet/'
+#country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
+#process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=True, add_country_iso_option=True)
