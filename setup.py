@@ -41,7 +41,7 @@ setup(
     description="Tools for working with open building datasets",
     entry_points={
         'console_scripts': [
-            'open_buildings=open_buildings.cli:main',
+            'ob=open_buildings.cli:main',
         ],
     },
     install_requires=install_requires,

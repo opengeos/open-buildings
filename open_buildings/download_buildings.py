@@ -147,14 +147,34 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
 
+    if os.path.exists(dst) and not generate_sql:
+        if overwrite:
+            if verbose:
+                print_timestamped_message(f"Deleting existing file at {dst}.")
+            os.remove(dst)
+        else:
+            # Print message that the file already exists and cleanly exit the program
+            print_timestamped_message(f"File at {dst} already exists. Use --overwrite to overwrite it.")
+            return
+
     if verbose:
         print_timestamped_message("Converting GeoJSON to quadkey and WKT...")
     quadkey = geojson_to_quadkey(geojson_data)
     wkt = geojson_to_wkt(geojson_data)
 
-    print_timestamped_message(f"Querying and downloading data with Quadkey: {quadkey}")
+    country_info = ""
+    if country_iso is not None:
+        country_info = f"in country {country_iso}"
+    print_timestamped_message(f"Querying and downloading data for quadkey {quadkey} {country_info}...")
+    if verbose:
+        print_timestamped_message(f"WKT: {wkt}")
     hive_value = 1 if hive_partitioning else 0
-    base_sql = f"select * EXCLUDE geometry, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
+    select_values = "* EXCLUDE geometry"
+    # if data path is overture and the output is not parquet, then name the values to get
+    # so we don't get the crazy structs that gis formats barf on
+    if data_path == "s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-hive/*/*.parquet" and format != "parquet":
+        select_values = "id, level, height, numfloors, class, country_iso, quadkey"
+    base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
     if country_iso:
         where_clause += f"country_iso = '{country_iso}' AND "
@@ -191,10 +211,6 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
         count = conn.execute("SELECT COUNT(*) FROM buildings;").fetchone()[0]
 
         print_timestamped_message(f"Downloaded {count} features into DuckDB.")
-    if overwrite and os.path.exists(dst):
-        if verbose:
-            print_timestamped_message(f"Deleting existing file at {dst}.")
-        os.remove(dst)
     if not generate_sql:
         print_timestamped_message(f"Writing to {dst}...")
 

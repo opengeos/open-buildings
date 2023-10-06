@@ -26,31 +26,38 @@ def overture():
     """Commands related to Overture operations."""
     pass
 
-@click.group()
-def tools():
-    """Commands useful for working with any buildings data"""
-    pass
-
 main.add_command(google)
 main.add_command(overture)
-main.add_command(tools)
 
 def handle_comma_separated(ctx, param, value):
     return value.split(',')
 
-@tools.command(name="get_buildings")
+@main.command(name="get_buildings")
 @click.argument('geojson_input', type=click.File('r'), required=False)
-@click.option('--format', default=None, type=click.Choice(['shapefile', 'geojson', 'geopackage', 'flatgeobuf', 'parquet']), help='Output format for the SQL query. Defaults to the extension of the dst file.')
-@click.option('--dst', type=str, default="buildings.json", help='Destination file name (without extension) or full path for the output.')
+@click.argument('dst', type=str, default="buildings.json")
+@click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query, defaults to Overture')
+@click.option('--country_iso', type=str, default=None, help='A 2 character country ISO code to filter the data by.')
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
 @click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-@click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query')
-@click.option('--country_iso', type=str, default=None, help='Country ISO code to filter the data by.')
-def get_buildings(geojson_input, format, dst, silent, overwrite, verbose, source, country_iso):
-    """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online.
-    Defaults to GeoJSON output in a file called buildings.json. It's recommended to set the --dst flat to
-    output. """
+def get_buildings(geojson_input, dst, source, country_iso, silent, overwrite, verbose):
+    """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online. GeoJSON
+    input can be provided as a file or piped in from stdin. If no GeoJSON input is provided, the tool will read from stdin.
+
+    Right now the tool supports two sources of data: Google and Overture. The data comes from Cloud-Native Geospatial distributions
+    on https://source.coop, that are partitioned by admin boundaries and use a quadkey for the spatial index. In time this tool will generalize
+    to support any admin boundary partitioned GeoParquet data, but for now it is limited to the Google and Overture datasets.
+
+    The default output is GeoJSON, in a file called buildings.json. Changing the suffix will change the output format - .shp for shapefile
+    .gpkg for GeoPackage, .fgb for FlatGeobuf and .parquet for GeoParquet, and .json or .geojson for GeoJSON. If your query is
+    all within one country it is strongly recommended to use country_iso to hint to the query engine which country to query, as this 
+    will speed up the query significantly (5-10x). Expect query times of 5-10 seconds for small queries with country_iso and 30-60 seconds without country_iso.
+    Large queries will take longer, as they have to download more data. 
+
+    You can look up the country_iso for a country here: https://github.com/lukes/ISO-3166-Countries-with-Regional-Codes/blob/master/all/all.csv
+    If you get the country wrong you will get zero results. Currently you can only query one country, so if your query crosses country boundaries you should
+    not use country_iso. In future versions of this tool we hope to eliminate the need to hint with the country_iso.
+    """
     # map source of google and overture to values for data_path and hive
     data_path = None
     hive_partitioning = False
@@ -64,7 +71,7 @@ def get_buildings(geojson_input, format, dst, silent, overwrite, verbose, source
     else:
         raise ValueError('Invalid source')
     
-    
+    format = None # will be set by the extension of the dst file
     generate_sql = False
     download_buildings(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso)
 
