@@ -72,6 +72,9 @@ def convert_pandas(input_filename, rg_size, verbose):
     except Exception as e:
         print(f"Error processing {input_filename}: {e}")
     
+# Note, this doesn't work, but I'm not sure why. May be that ogr doesn't really support
+# compatible geospatial parquet, but it really looks like it should. Maybe there's something
+# weird with the ones written out. 
 def convert_ogr(input_filename, rg_size, verbose):
     output_filename = input_filename.replace(".parquet", "_geo.parquet")
     rg_cmd = f"ROW_GROUP_SIZE={rg_size}"
@@ -149,19 +152,6 @@ def process_quadkey_recursive(conn, table_name, country_code, output_folder, len
                 convert_to_geoparquet(quad_output_filename, geo_conversion, row_group_size, verbose)
 
 
-# TODO: add option for 'hive' output (put things in folder)
-# TODO: add option to read duckdb path from an environment variable
-# TODO: add row group size option (first works with duckdb)
-
-@click.command()
-@click.argument('duckdb-path', type=click.Path(exists=True))
-@click.option('--output-folder', default=os.getcwd(), type=click.Path(), help='Folder to store the output files')
-@click.option('--geo-conversion', default='gpq', type=click.Choice(['gpq', 'none', 'pandas', 'ogr'], case_sensitive=False))
-@click.option('--verbose', is_flag=True, default=False, help='Print verbose output')
-@click.option('--max-per-file', default=10000000, type=int, help='Maximum number of rows per file')
-@click.option('--row-group-size', default=10000, type=int, help='Row group size for Parquet files')
-@click.option('--hive', is_flag=True, default=False, help='Output files in Hive format (folder structure)')
-@click.option('--table-name', default='buildings', type=str, help='Name of the table to process')
 def process_db(duckdb_path, output_folder, geo_conversion, verbose, max_per_file, row_group_size, hive, table_name):
     # create output folder if it does not exist
     os.makedirs(output_folder, exist_ok=True)
