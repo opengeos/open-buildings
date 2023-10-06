@@ -168,6 +168,11 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
     print_timestamped_message(f"Querying and downloading data for quadkey {quadkey} {country_info}...")
     if verbose:
         print_timestamped_message(f"WKT: {wkt}")
+    if country_info != "":
+        print_timestamped_message(f"Expect query times of at least 5-10 seconds")
+    else:
+        print_timestamped_message(f"Expect query times of at least 30 seconds - this can be lessened by using the --country-iso option")
+   
     hive_value = 1 if hive_partitioning else 0
     select_values = "* EXCLUDE geometry"
     # if data path is overture and the output is not parquet, then name the values to get
