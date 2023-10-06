@@ -3,7 +3,8 @@ import os
 import click
 import pandas as pd
 import matplotlib.pyplot as plt
-from open_buildings import process_benchmark, process_geometries
+from open_buildings.google.process import process_benchmark, process_geometries
+from open_buildings.download_buildings import download as download_buildings
 from datetime import datetime, timedelta
 from tabulate import tabulate
 import boto3  # Required for S3 operations
@@ -23,11 +24,34 @@ def overture():
     """Commands related to Overture operations."""
     pass
 
+@click.group()
+def tools():
+    """Commands useful for working with any buildings data"""
+    pass
+
 main.add_command(google)
 main.add_command(overture)
+main.add_command(tools)
 
 def handle_comma_separated(ctx, param, value):
     return value.split(',')
+
+@tools.command(name="get_buildings")
+@click.argument('geojson_input', type=click.File('r'), required=False)
+@click.option('--only-quadkey', is_flag=True, help='Include only the quadkey in the WHERE clause.')
+@click.option('--format', default=None, type=click.Choice(['shapefile', 'geojson', 'geopackage', 'flatgeobuf', 'parquet']), help='Output format for the SQL query. Defaults to the extension of the dst file.')
+@click.option('--generate-sql', is_flag=True, default=False, help='Generate and print SQL without executing.')
+@click.option('--dst', type=str, default="buildings.parquet", help='Destination file name (without extension) or full path for the output.')
+@click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
+@click.option('--time-report', is_flag=True, default=True, help='Report how long the operation took to run.')
+@click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
+@click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
+@click.option('--run-gpq', is_flag=True, default=True, help='Run gpq conversion to ensure the output is valid GeoParquet.')
+@click.option('--data-path', type=str, default="s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-2/*.parquet", help='Path to the root of the buildings parquet data.')
+@click.option('--hive-partitioning', is_flag=True, default=False, help='Use Hive partitioning when reading the parquet data.')
+@click.option('--country_iso', type=str, default=None, help='Country ISO code to filter the data by.')
+def get_buildings(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso):
+    download_buildings(geojson_input, only_quadkey, format, generate_sql, dst, silent, time_report, overwrite, verbose, run_gpq, data_path, hive_partitioning, country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))

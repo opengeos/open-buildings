@@ -6,7 +6,7 @@
 import unittest
 from click.testing import CliRunner
 
-from open_buildings import open_buildings
+from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings import cli
 
 
