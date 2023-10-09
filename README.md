@@ -13,7 +13,7 @@
 This repo is intended to be a set of useful scripts for getting and converting Open Building Datasets using [Cloud Native Geospatial](https://cloudnativegeo.org) formats. 
 Initially the focus is on Google's [Open Buildings](https://sites.research.google/open-buildings/) dataset and Overture's building dataset. 
 
-The main tool that most people will be interested in is the `get-buildings` command, that
+The main tool that most people will be interested in is the `get_buildings` command, that
 lets you supply a GeoJSON file to a command-line interface and it'll download all buildings
 in the area supplied, output in common GIS formats (GeoPackage, FlatGeobuf, Shapefile, GeoJSON and GeoParquet).
 
@@ -106,7 +106,7 @@ Options:
   --help                      Show this message and exit.
 ```
 
-Note that the `get-buildings` operation is not very robust, there are likely a number of ways to break it. #13 
+Note that the `get_buildings` operation is not very robust, there are likely a number of ways to break it. #13 
 is used to track it, but if you have any problems please report them in the [issue tracker](https://github.com/opengeos/open-buildings/issues)
 to help guide how we improve it. 
 
