@@ -223,6 +223,8 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
 
         print_timestamped_message(f"Downloaded {count} features into DuckDB.")
         if count == 0:
+            if country_iso is not None:
+                print_timestamped_message(f"If you are sure that your GeoJSON should have buildings then check to be sure that {country_iso} is the right code.")
             if verbose:
                 print_elapsed_time(start_time)
             return
