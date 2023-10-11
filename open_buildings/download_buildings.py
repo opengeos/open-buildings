@@ -216,7 +216,12 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
         print_timestamped_message(create_clause)
     if not generate_sql:
         conn = duckdb.connect(database=':memory:')
-        conn.execute("load spatial;")
+        try:
+            conn.execute("load spatial;")
+        except duckdb.duckdb.IOException:
+            print_timestamped_message("Installing DuckDB spatial extension...")
+            conn.execute("install spatial;")
+            conn.execute("load spatial;")
         conn.execute(create_clause)
 
         count = conn.execute("SELECT COUNT(*) FROM buildings;").fetchone()[0]
