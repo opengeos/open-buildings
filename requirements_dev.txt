@@ -11,3 +11,6 @@ Sphinx
 twine
 Click
 codespell
+pydantic==2.4.2
+pytest==7.4.2
+pytest-rerunfailures==12.0

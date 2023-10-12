@@ -1,0 +1,18 @@
+FROM python:3.11-slim-bullseye
+
+ARG USER
+ARG UID
+
+# install git
+# create current user in container and link it to host UID
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/* \
+    && useradd -u $UID $USER -p '' -l -m && chown $UID /home/$USER
+
+# $PWD needs to be mounted to /workspace on run time
+WORKDIR /workspace
+COPY . .
+
+# install package in editable mode, install [dev] dependencies (see setup.py -> extras_require arg)
+RUN pip install -e '.[dev]'
+
+USER $USER
