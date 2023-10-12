@@ -2,4 +2,4 @@
 
 __author__ = """Chris Holmes"""
 __email__ = 'cholmes@9eo.org'
-__version__ = '0.0.8'
+__version__ = '0.0.10'
