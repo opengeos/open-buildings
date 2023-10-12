@@ -137,6 +137,12 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             click.echo(f"[{current_time}] {message}")
 
+    def print_elapsed_time(start_time):
+        end_time = time.time()
+
+        elapsed_time = end_time - start_time
+        print_timestamped_message(f"Operation took {elapsed_time:.2f} seconds.")
+
     start_time = time.time()
     if verbose:
         print_timestamped_message("Reading GeoJSON input...")
@@ -210,12 +216,23 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
         print_timestamped_message(create_clause)
     if not generate_sql:
         conn = duckdb.connect(database=':memory:')
-        conn.execute("load spatial;")
+
+        spatial_extension_query = conn.execute("SELECT * FROM duckdb_extensions() WHERE installed IS TRUE AND extension_name = 'spatial';").fetchone()
+        if spatial_extension_query is None:
+            print_timestamped_message("Installing DuckDB spatial extension...")
+            conn.execute("INSTALL spatial;")
+        conn.execute("LOAD spatial;")
         conn.execute(create_clause)
 
         count = conn.execute("SELECT COUNT(*) FROM buildings;").fetchone()[0]
 
         print_timestamped_message(f"Downloaded {count} features into DuckDB.")
+        if count == 0:
+            if country_iso is not None:
+                print_timestamped_message(f"If you are sure that your GeoJSON should have buildings then check to be sure that {country_iso} is the right code.")
+            if verbose:
+                print_elapsed_time(start_time)
+            return
     if not generate_sql:
         print_timestamped_message(f"Writing to {dst}...")
 
@@ -251,12 +268,9 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
             'flatgeobuf': 'FlatGeobuf'
         }
         conn.execute(f"COPY buildings TO '{dst}' WITH (FORMAT GDAL, DRIVER '{gdal_format[format]}');")
-    end_time = time.time()
-
+          
     if verbose:
-        elapsed_time = end_time - start_time
-        print_timestamped_message(f"Operation took {elapsed_time:.2f} seconds.")      
-
+        print_elapsed_time(start_time)
 
 # Registering the commands with the main group
 cli.add_command(quadkey)

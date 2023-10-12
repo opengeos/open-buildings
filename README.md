@@ -10,20 +10,22 @@
 
 ## Introduction
 
-This repo is intended to be a set of useful scripts for working with Open Building Datasets, Initially Google's [Open Buildings](https://sites.research.google/open-buildings/)
-dataset and Overture's building dataset, specifically to help translate them into [Cloud Native Geospatial](https://cloudnativegeo.org) formats and then use those. The outputs will live
-on <https://beta.source.coop>, [here for Google](https://beta.source.coop/cholmes/google-open-buildings) and [here for Overture](https://beta.source.coop/cholmes/overture/) so most people can just make use of those directly. 
+This repo is intended to be a set of useful scripts for getting and converting Open Building Datasets using [Cloud Native Geospatial](https://cloudnativegeo.org) formats. 
+Initially the focus is on Google's [Open Buildings](https://sites.research.google/open-buildings/) dataset and Overture's building dataset. 
 
-The main operation that most people will be interested in is the 'get-buildings' command, that
+The main tool that most people will be interested in is the `get_buildings` command, that
 lets you supply a GeoJSON file to a command-line interface and it'll download all buildings
 in the area supplied, output in common GIS formats (GeoPackage, FlatGeobuf, Shapefile, GeoJSON and GeoParquet).
 
-The rest of the CLI's and scripts are intended to show the process of transforming the data,
- and then they've expanded to be a way to benchmark performance.
+The tool works by leveraging partitioned [GeoParquet](https://geoparquet.org) files, using [DuckDB](https://duckdb.org)
+to just query exactly what is needed. This is done without any server - DuckDB on your computer queries, filter and downloads
+just the rows that you want. Right now you can query two datasets, that live on [Source Cooperative](https://beta.source.coop), see [here for Google](https://beta.source.coop/cholmes/google-open-buildings) and [here for Overture](https://beta.source.coop/cholmes/overture/). The rest of the CLI's and scripts were used to create those datasets, with some
+additions for benchmarking performance.
 
 This is basically my first Python project, and certainly my first open source one. It is only possible due to ChatGPT, as I'm not a python
 programmer, and not a great programmer in general (coded professionally for about 2 years, then shifted to doing lots of other stuff). So
-it's likely not great code, but it's been fun to iterate on it and seems like it might be useful to others. And contributions are welcome! I'm working on making the issue tracker accessible, so anyone who wants to try out some open source coding can jump in.
+it's likely not great code, but it's been fun to iterate on it and seems like it might be useful to others. And contributions are welcome! 
+I'm working on making the issue tracker accessible, so anyone who wants to try out some open source coding can jump in.
 
 ## Installation
 
@@ -39,7 +41,7 @@ This should add a CLI that you can then use. If it's working then:
 ob
 ```
 
-Should print out a help message. You then should be able run the CLI (download [1.json](https://data.source.coop/cholmes/aois/1.json):
+Will print out a help message. You then will be able run the CLI (download [1.json](https://data.source.coop/cholmes/aois/1.json):
 
 
 ```bash
@@ -103,6 +105,14 @@ Options:
   --verbose                   Print detailed logs with timestamps.
   --help                      Show this message and exit.
 ```
+
+Note that the `get_buildings` operation is not very robust, there are likely a number of ways to break it. #13 
+is used to track it, but if you have any problems please report them in the [issue tracker](https://github.com/opengeos/open-buildings/issues)
+to help guide how we improve it. 
+
+We do hope to eliminate the need to supply an iso_country for fast querying, see #29 for that tracking issue. We also
+hope to add more building datasets, starting with the [Google-Microsoft Open Buildings by VIDA](https://beta.source.coop/vida/google-microsoft-open-buildings/geoparquet/by_country_s2),
+see #26 for more info.
 
 ### Google Building processings
 
