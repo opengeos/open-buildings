@@ -2,18 +2,21 @@ import json
 import click
 from math import tan, cos, log, pi
 from shapely.geometry import shape
-from typing import Tuple
+from typing import Dict, Any
 import mercantile 
 import duckdb
 import time
+from pathlib import Path
 import datetime
 import os
+from typing import Literal, Optional
 import pandas as pd
 import geopandas as gpd
 import subprocess
 from shapely import wkb
 import shutil
 
+from open_buildings.settings import Source, settings
 
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
@@ -130,8 +133,44 @@ def quad2json(quadkey_input):
     click.echo(json.dumps(result, indent=2))
 
 
-def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso):
+def download(
+        geojson_data: Dict[str, Any], 
+        source: Source | str = Source.OVERTURE,
+        dst: Path | str = "buildings.json",
+        format: Optional[Literal["shapefile", "geojson", "geopackage", "flatgeobuf", "parquet"]] = None, 
+        country_iso: Optional[str] = None,
+        *,
+        generate_sql: bool = False, # whether to actually perform actions or just generate sql
+        verbose: bool = False, # print detailed logs, use python logger instead!
+        silent: bool = False, # no log output, use python logger instead!
+        overwrite: bool = False # whether to overwirte existing output file
+    ) -> None:
+    """
+    Extract buildings from online sources.
+    ...
 
+    Parameters
+    ----------
+    geojson_input : Dict[str, Any]
+        GeoJSON dictionary
+    format : string, default "geojson"
+        The output format, alternatively can be extracted from "dst"
+
+    """
+    # type conversion
+    if type(source) == str:
+        source = Source(source.upper())
+
+    if type(dst) == str:
+        dst = Path(dst)
+
+    # input validation
+    if format and format not in settings.extensions.keys():
+        raise ValueError(f"Format {format} is not known. Please choose one of {', '.join(settings.extensions.keys())}.")
+
+    # ....
+
+    
     def print_timestamped_message(message):
         if not silent:
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -147,11 +186,8 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
     if verbose:
         print_timestamped_message("Reading GeoJSON input...")
 
-    # Read the GeoJSON
-    if geojson_input:
-        geojson_data = json.load(geojson_input)
-    else:
-        geojson_data = json.load(click.get_text_stream('stdin'))
+    if os.path.isdir(dst):
+        dst.joinpath("buildings.json")
 
     if os.path.exists(dst) and not generate_sql:
         if overwrite:
@@ -179,41 +215,36 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
     else:
         print_timestamped_message(f"Expect query times of at least 30 seconds - this can be lessened by using the --country-iso option")
    
+    hive_partitioning = settings.sources[source].hive_partitioning
     hive_value = 1 if hive_partitioning else 0
     select_values = "* EXCLUDE geometry"
     # if data path is overture and the output is not parquet, then name the values to get
     # so we don't get the crazy structs that gis formats barf on
-    if data_path == "s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-hive/*/*.parquet" and format != "parquet":
+    if source == Source.OVERTURE and format != "parquet":
         select_values = "id, level, height, numfloors, class, country_iso, quadkey"
-    base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
+    base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{settings.sources[source].base_url}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
     if country_iso:
         where_clause += f"country_iso = '{country_iso}' AND "
     where_clause += f"quadkey LIKE '{quadkey}%'"
     where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
 
-    output_extension = {
-        'shapefile': '.shp',
-        'geojson': 'json',
-        'geopackage': '.gpkg',
-        'flatgeobuf': '.fgb',
-        'parquet': '.parquet'
-    }
+    if format and dst:
+        # format takes precedence
+        dst = dst.joinpath(dst.stem + settings.extensions[format])
 
-    if not format:
-        for fmt, ext in output_extension.items():
-            if dst.endswith(ext):
+    if not format and dst:
+        for fmt, ext in settings.extensions.items():
+            if dst.name.endswith(ext):
                 format = fmt
                 break
         else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
-            raise ValueError("Unknown file format. Please specify using --format option.")
-
-    if not dst.endswith(output_extension[format]):
-        dst += output_extension[format]
-
+            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join(settings.extensions.keys())}.")
+                
     create_clause = f"CREATE TABLE buildings AS ({base_sql},\n{where_clause});"
     if generate_sql or verbose:
         print_timestamped_message(create_clause)
+
     if not generate_sql:
         conn = duckdb.connect(database=':memory:')
 
@@ -281,4 +312,3 @@ cli.add_command(quad2json)
 
 if __name__ == '__main__':
     cli()
-
