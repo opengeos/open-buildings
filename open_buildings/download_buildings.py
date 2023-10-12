@@ -159,10 +159,16 @@ def download(
     """
     # type conversion
     if type(source) == str:
-        source = Source(source.upper())
+        try:
+            source = Source(source.upper())
+        except ValueError:
+            raise ValueError(f"Source {source} is unknown. Please choose one of {' ,'.join([s.name.lower() for s in Source])}.") from e
 
     if type(format) == str:
-        format = Format(format.upper())
+        try:
+            format = Format(format.upper())
+        except ValueError:
+            raise ValueError(f"Format {format} is unknown. Please choose one of {', '.join(f.name.lower() for f in Format)}.") from e
 
     if type(dst) == str:
         dst = Path(dst)
