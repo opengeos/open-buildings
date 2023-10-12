@@ -16,7 +16,7 @@ import subprocess
 from shapely import wkb
 import shutil
 
-from open_buildings.settings import Source, settings
+from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
@@ -135,9 +135,9 @@ def quad2json(quadkey_input):
 
 def download(
         geojson_data: Dict[str, Any], 
-        source: Source | str = Source.OVERTURE,
         dst: Path | str = "buildings.json",
-        format: Optional[Literal["shapefile", "geojson", "geopackage", "flatgeobuf", "parquet"]] = None, 
+        source: Source | str = Source.OVERTURE,
+        format: Optional[Format | str] = None, 
         country_iso: Optional[str] = None,
         *,
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
@@ -161,12 +161,11 @@ def download(
     if type(source) == str:
         source = Source(source.upper())
 
+    if type(format) == str:
+        format = Format(format.upper())
+
     if type(dst) == str:
         dst = Path(dst)
-
-    # input validation
-    if format and format not in settings.extensions.keys():
-        raise ValueError(f"Format {format} is not known. Please choose one of {', '.join(settings.extensions.keys())}.")
 
     # ....
 
@@ -220,7 +219,7 @@ def download(
     select_values = "* EXCLUDE geometry"
     # if data path is overture and the output is not parquet, then name the values to get
     # so we don't get the crazy structs that gis formats barf on
-    if source == Source.OVERTURE and format != "parquet":
+    if source == Source.OVERTURE and format != Format.PARQUET:
         select_values = "id, level, height, numfloors, class, country_iso, quadkey"
     base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{settings.sources[source].base_url}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
@@ -231,7 +230,7 @@ def download(
 
     if format and dst:
         # format takes precedence
-        dst = dst.joinpath(dst.stem + settings.extensions[format])
+        dst = dst.joinpath(f"{dst.stem}.{settings.extensions[format]}")
 
     if not format and dst:
         for fmt, ext in settings.extensions.items():
@@ -239,7 +238,7 @@ def download(
                 format = fmt
                 break
         else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
-            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join(settings.extensions.keys())}.")
+            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join([f.name.lower() for f in Format])}.")
                 
     create_clause = f"CREATE TABLE buildings AS ({base_sql},\n{where_clause});"
     if generate_sql or verbose:
@@ -267,7 +266,7 @@ def download(
     if not generate_sql:
         print_timestamped_message(f"Writing to {dst}...")
 
-    if format == 'parquet':
+    if format == Format.PARQUET:
         copy_statement = f"COPY buildings TO '{dst}' WITH (FORMAT Parquet);"
         if generate_sql or verbose:
             print_timestamped_message(copy_statement)
@@ -293,10 +292,10 @@ def download(
                 print(f"Error processing {dst} to geoparquet: {e}")
     else:
         gdal_format = {
-            'shapefile': 'ESRI Shapefile',
-            'geojson': 'GeoJSON',
-            'geopackage': 'GPKG',
-            'flatgeobuf': 'FlatGeobuf'
+            Format.SHAPEFILE: 'ESRI Shapefile',
+            Format.GEOJSON: 'GeoJSON',
+            Format.GEOPACKAGE: 'GPKG',
+            Format.FLATGEOBUF: 'FlatGeobuf'
         }
         conn.execute(f"COPY buildings TO '{dst}' WITH (FORMAT GDAL, DRIVER '{gdal_format[format]}');")
           

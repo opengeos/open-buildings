@@ -6,13 +6,21 @@ class Source(Enum):
     GOOGLE = 1
     OVERTURE = 2
 
+class Format(Enum):
+    SHAPEFILE = 1
+    GEOJSON = 2
+    GEOPACKAGE = 3
+    FLATGEOBUF = 4
+    PARQUET = 5
+
+
 class SourceSettings(BaseModel):
     base_url: str
     hive_partitioning: bool
 
 class SettingsSchema(BaseModel):
     sources: Dict[Source, SourceSettings]
-    extensions: Dict[str, str]
+    extensions: Dict[Format, str]
 
 settings = SettingsSchema(
     sources={
@@ -26,10 +34,10 @@ settings = SettingsSchema(
         )
     },
     extensions={
-        'shapefile': '.shp',
-        'geojson': '.json',
-        'geopackage': '.gpkg',
-        'flatgeobuf': '.fgb',
-        'parquet': '.parquet'
+        Format.SHAPEFILE: 'shp',
+        Format.GEOJSON: 'json',
+        Format.GEOPACKAGE: 'gpkg',
+        Format.FLATGEOBUF: 'fgb',
+        Format.PARQUET: 'parquet'
     }
 )
