@@ -4,6 +4,8 @@ private/
 *.py[cod]
 *$py.class
 
+issues.txt
+
 # C extensions
 *.so
 
