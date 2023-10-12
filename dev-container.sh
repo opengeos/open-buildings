@@ -6,8 +6,9 @@
 #   Builds Dockerfile.dev if it does not already exists.        #
 #   The CWD is mounted in the container.                        #
 #                                                               #
-#   Use --rebuild flag to force rebuild of the image even  if   #
+#   Use --rebuild flag to force rebuild of the image even if    #
 #   (a potentially older version of) the image already exists.  #
+#   This is necessary if e.g. the dependencies are updated.     #
 #                                                               #
 #################################################################
 
@@ -24,4 +25,4 @@ else
     }
 fi
 
-docker run -it --workdir /workspace -v $PWD:/workspace ob-dev bash
+docker run -it --workdir /workspace -v $PWD:/workspace -v $HOME/.gitconfig:$HOME/.gitconfig ob-dev bash
