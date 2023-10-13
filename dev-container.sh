@@ -25,4 +25,4 @@ else
     }
 fi
 
-docker run -it --workdir /workspace -v $PWD:/workspace -v $HOME/.gitconfig:$HOME/.gitconfig ob-dev bash
+docker run -it --workdir /workspace -v $PWD:/workspace -v $HOME/.gitconfig:$HOME/.gitconfig -v $HOME/.ssh:$HOME/.ssh ob-dev bash
