@@ -40,4 +40,4 @@ jobs:
                   pip install .[dev]
             - name: PKG-TEST
               run: |
-                  python3 -m pytest .
+                  python3 -m pytest . -n 4
