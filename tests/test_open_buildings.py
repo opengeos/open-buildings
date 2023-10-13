@@ -11,7 +11,7 @@ NUM_RERUNS = 2 # number of re-runs for integration tests
 
 @pytest.fixture
 def aoi() -> Dict[str, Any]:
-    """ Sample AOI over Nauru. """
+    """ Sample AOI over Seychelles. """
     return {
       "type": "Feature",
       "properties": {},
@@ -19,24 +19,24 @@ def aoi() -> Dict[str, Any]:
         "coordinates": [
           [
             [
-              166.9108088710223,
-              -0.5298810235483273
+              55.45280573412927,
+              -4.6227964300457245
             ],
             [
-              166.9108088710223,
-              -0.5305081340523401
+              55.45280573412927,
+              -4.623440862045413
             ],
             [
-              166.9114098776538,
-              -0.5305081340523401
+              55.453376761871795,
+              -4.623440862045413
             ],
             [
-              166.9114098776538,
-              -0.5298810235483273
+              55.453376761871795,
+              -4.6227964300457245
             ],
             [
-              166.9108088710223,
-              -0.5298810235483273
+              55.45280573412927,
+              -4.6227964300457245
             ]
           ]
         ],
@@ -46,12 +46,11 @@ def aoi() -> Dict[str, Any]:
 
 def test_geojson_to_wkt(aoi: Dict[str, Any]):
     """ Tests the geojson_to_wkt() function. """
-    print(geojson_to_wkt(aoi))
-    assert geojson_to_wkt(aoi) == 'POLYGON ((166.9108088710223 -0.5298810235483273, 166.9108088710223 -0.5305081340523401, 166.9114098776538 -0.5305081340523401, 166.9114098776538 -0.5298810235483273, 166.9108088710223 -0.5298810235483273))'
+    assert geojson_to_wkt(aoi) == 'POLYGON ((55.45280573412927 -4.6227964300457245, 55.45280573412927 -4.623440862045413, 55.453376761871795 -4.623440862045413, 55.453376761871795 -4.6227964300457245, 55.45280573412927 -4.6227964300457245))'
 
 def test_geojson_to_quadkey(aoi: Dict[str, Any]):
     """ Tests geojson_to_quadkey() using a pre-established true value. """
-    assert geojson_to_quadkey(aoi) == '311101101231'
+    assert geojson_to_quadkey(aoi) == '301001330310'
 
 def test_quadkey_to_geojson():
     """ Tests quadkey_to_geojson() using a pre-established true value. """
@@ -63,7 +62,7 @@ def test_quadkey_to_geojson():
 def test_download(source: Source, aoi: Dict[str, Any], tmp_path: Path):
     """ Tests that the download function successfully downloads a GeoJSON file from all sources (parametrised test) into a temporary directory (teardown after test). """
     output_file = tmp_path.joinpath(f"output_{source.name}.json")
-    download(aoi, source=source, dst=output_file, country_iso="NR")
+    download(aoi, source=source, dst=output_file, country_iso="SC")
     assert os.path.exists(output_file)
     assert os.path.getsize(output_file) != 0
 
@@ -81,7 +80,7 @@ def test_download_no_output(aoi: Dict[str, Any], tmp_path: Path):
 def test_download_format(format: Format, aoi: Dict[str, Any], tmp_path: Path):
     """ Requests data in all file formats defined in the settings. Attempts to validate the output for each of those too. """
     output_file = tmp_path.joinpath(f"output.{settings.extensions[format]}")
-    download(aoi, dst=output_file, country_iso="NR")
+    download(aoi, dst=output_file, country_iso="SC")
     assert os.path.exists(output_file)
     assert os.path.getsize(output_file) != 0
 
