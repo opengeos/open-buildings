@@ -147,15 +147,28 @@ def download(
     ) -> None:
     """
     Extract buildings from online sources.
-    ...
 
     Parameters
     ----------
     geojson_input : Dict[str, Any]
         GeoJSON dictionary
+    dst : Path | str
+        The path to write the output to. Can be either a file or a directory.
+        If a directory is provided, a file "buildings.<ext>" will be created at that location.
     format : string, default "geojson"
-        The output format, alternatively can be extracted from "dst"
-
+        The output format, alternatively can be extracted from "dst". Explicitly naming the format can be useful if
+        used in combination with a directory as "dst". If both file path and format param is provided, the format param takes
+        precedence.
+    country_iso : str, optional
+        A two-letter ISO-3166 code for the country the AOI (geojson_input) is in. Not required but massively speeds up queries.
+    generate_sql : bool, default False
+        Whether to actually perform DuckDB queries or only generate the SQL.
+    verbose : bool, default False
+        Print more detailed log messages.
+    silent : bool, default False
+        Suppress log messages.
+    overwrite : bool, default False
+        Overwrite existing output files.
     """
     # type conversion
     if type(source) == str:
@@ -173,9 +186,23 @@ def download(
     if type(dst) == str:
         dst = Path(dst)
 
-    # ....
+    # validate path and extension
+    if os.path.isdir(dst):
+        dst.joinpath("buildings.json")
 
+    if format and dst:
+        # format takes precedence
+        dst = dst.joinpath(f"{dst.stem}.{settings.extensions[format]}")
+
+    if not format and dst:
+        for fmt, ext in settings.extensions.items():
+            if dst.name.endswith(ext):
+                format = fmt
+                break
+        else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
+            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join([f.name.lower() for f in Format])}.")
     
+    # utils (should be in separate utils file?)
     def print_timestamped_message(message):
         if not silent:
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -187,12 +214,10 @@ def download(
         elapsed_time = end_time - start_time
         print_timestamped_message(f"Operation took {elapsed_time:.2f} seconds.")
 
+    # main program
     start_time = time.time()
     if verbose:
         print_timestamped_message("Reading GeoJSON input...")
-
-    if os.path.isdir(dst):
-        dst.joinpath("buildings.json")
 
     if os.path.exists(dst) and not generate_sql:
         if overwrite:
@@ -220,10 +245,11 @@ def download(
     else:
         print_timestamped_message(f"Expect query times of at least 30 seconds - this can be lessened by using the --country-iso option")
    
+    # download data into DuckDB
     hive_partitioning = settings.sources[source].hive_partitioning
     hive_value = 1 if hive_partitioning else 0
     select_values = "* EXCLUDE geometry"
-    # if data path is overture and the output is not parquet, then name the values to get
+    # if source is overture and the output is not parquet, then name the values to get
     # so we don't get the crazy structs that gis formats barf on
     if source == Source.OVERTURE and format != Format.PARQUET:
         select_values = "id, level, height, numfloors, class, country_iso, quadkey"
@@ -233,18 +259,6 @@ def download(
         where_clause += f"country_iso = '{country_iso}' AND "
     where_clause += f"quadkey LIKE '{quadkey}%'"
     where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
-
-    if format and dst:
-        # format takes precedence
-        dst = dst.joinpath(f"{dst.stem}.{settings.extensions[format]}")
-
-    if not format and dst:
-        for fmt, ext in settings.extensions.items():
-            if dst.name.endswith(ext):
-                format = fmt
-                break
-        else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
-            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join([f.name.lower() for f in Format])}.")
                 
     create_clause = f"CREATE TABLE buildings AS ({base_sql},\n{where_clause});"
     if generate_sql or verbose:
@@ -269,6 +283,8 @@ def download(
             if verbose:
                 print_elapsed_time(start_time)
             return
+    
+    # export to dst
     if not generate_sql:
         print_timestamped_message(f"Writing to {dst}...")
 
