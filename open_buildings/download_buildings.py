@@ -188,7 +188,7 @@ def download(
 
     # validate path and extension
     if os.path.isdir(dst):
-        dst.joinpath("buildings.json")
+        dst = dst.joinpath("buildings.json")
 
     if format and dst:
         # format takes precedence

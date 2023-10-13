@@ -71,8 +71,16 @@ def test_download(source: Source, aoi: Dict[str, Any], tmp_path: Path):
 def test_download_no_output(aoi: Dict[str, Any], tmp_path: Path):
     """ Test that no empty output file gets created if a query doesn't return anything (in this case because a wrong country_iso argument is given.) """
     output_file = tmp_path.joinpath("no_output.json")
-    download(aoi, dst=output_file, country_iso="AI") # wrong country, aoi is in GB, not Anguilla
+    download(aoi, dst=output_file, country_iso="AI") # wrong country, aoi is in SC, not Anguilla
     assert not os.path.exists(output_file)
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_download_directory(aoi: Dict[str, Any], tmp_path: Path):
+    """ Test that, if a directory is passed, the output gets downloaded to a default file name in that directory. """
+    download(aoi, dst=tmp_path, country_iso="SC")
+    assert os.path.exists(tmp_path.joinpath("buildings.json"))
+    assert os.path.getsize(tmp_path.joinpath("buildings.json")) != 0
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
