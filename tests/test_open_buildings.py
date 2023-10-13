@@ -12,38 +12,6 @@ NUM_RERUNS = 2 # number of re-runs for integration tests
 @pytest.fixture
 def aoi() -> Dict[str, Any]:
     """ Sample AOI over Nauru. """
-    # return {
-    #   "type": "Feature",
-    #   "properties": {},
-    #   "geometry": {
-    #     "coordinates": [
-    #       [
-    #         [
-    #           166.9108088710223,
-    #           -0.5298810235483273
-    #         ],
-    #         [
-    #           166.9108088710223,
-    #           -0.5305081340523401
-    #         ],
-    #         [
-    #           166.9114098776538,
-    #           -0.5305081340523401
-    #         ],
-    #         [
-    #           166.9114098776538,
-    #           -0.5298810235483273
-    #         ],
-    #         [
-    #           166.9108088710223,
-    #           -0.5298810235483273
-    #         ]
-    #       ]
-    #     ],
-    #     "type": "Polygon"
-    #   }
-    # }
-
     return {
       "type": "Feature",
       "properties": {},
@@ -51,24 +19,24 @@ def aoi() -> Dict[str, Any]:
         "coordinates": [
           [
             [
-              -0.11033578818594947,
-              51.52186323879164
+              166.9108088710223,
+              -0.5298810235483273
             ],
             [
-              -0.11033578818594947,
-              51.52159611516586
+              166.9108088710223,
+              -0.5305081340523401
             ],
             [
-              -0.10986859910050839,
-              51.52159611516586
+              166.9114098776538,
+              -0.5305081340523401
             ],
             [
-              -0.10986859910050839,
-              51.52186323879164
+              166.9114098776538,
+              -0.5298810235483273
             ],
             [
-              -0.11033578818594947,
-              51.52186323879164
+              166.9108088710223,
+              -0.5298810235483273
             ]
           ]
         ],
@@ -95,7 +63,7 @@ def test_quadkey_to_geojson():
 def test_download(source: Source, aoi: Dict[str, Any], tmp_path: Path):
     """ Tests that the download function successfully downloads a GeoJSON file from all sources (parametrised test) into a temporary directory (teardown after test). """
     output_file = tmp_path.joinpath(f"output_{source.name}.json")
-    download(aoi, source=source, dst=output_file, country_iso="GB")
+    download(aoi, source=source, dst=output_file, country_iso="NR")
     assert os.path.exists(output_file)
     assert os.path.getsize(output_file) != 0
 
