@@ -2,7 +2,7 @@ import json
 import click
 from math import tan, cos, log, pi
 from shapely.geometry import shape
-from typing import Dict, Any
+from typing import Dict, Any, Union
 import mercantile 
 import duckdb
 import time
@@ -135,9 +135,9 @@ def quad2json(quadkey_input):
 
 def download(
         geojson_data: Dict[str, Any], 
-        dst: Path | str = "buildings.json",
-        source: Source | str = Source.OVERTURE,
-        format: Optional[Format | str] = None, 
+        dst: Union[Path, str] = "buildings.json",
+        source: Union[Source, str] = Source.OVERTURE,
+        format: Optional[Union[Format, str]] = None, 
         country_iso: Optional[str] = None,
         *,
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
