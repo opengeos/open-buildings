@@ -143,7 +143,7 @@ def download(
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
         verbose: bool = False, # print detailed logs, use python logger instead!
         silent: bool = False, # no log output, use python logger instead!
-        overwrite: bool = False # whether to overwirte existing output file
+        overwrite: bool = False # whether to overwrite existing output file
     ) -> None:
     """
     Extract buildings from online sources.
