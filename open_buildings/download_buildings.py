@@ -141,8 +141,8 @@ def download(
         country_iso: Optional[str] = None,
         *,
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
-        verbose: bool = False, # print detailed logs, use python logger instead!
-        silent: bool = False, # no log output, use python logger instead!
+        verbose: bool = False, # print detailed logs
+        silent: bool = False, # no log output
         overwrite: bool = False # whether to overwrite existing output file
     ) -> None:
     """

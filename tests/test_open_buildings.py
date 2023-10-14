@@ -91,7 +91,7 @@ def test_download_directory(aoi: Dict[str, Any], tmp_path: Path):
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
-@pytest.mark.parametrize("format", [f for f in Format if f != Format.SHAPEFILE]) # fails for shapefile!
+@pytest.mark.parametrize("format", [f for f in Format]) # fails for shapefile!
 def test_download_format(format: Format, aoi: Dict[str, Any], tmp_path: Path):
     """ Requests data in all file formats defined in the settings. Attempts to validate the output for each of those too. """
     output_file = tmp_path.joinpath(f"output.{settings.extensions[format]}")
@@ -100,20 +100,19 @@ def test_download_format(format: Format, aoi: Dict[str, Any], tmp_path: Path):
     assert os.path.getsize(output_file) != 0
 
     # validate output
-    match format:
-        case Format.GEOJSON:
-            with open(output_file, "r") as f:
-                json.load(f)
-        case Format.FLATGEOBUF:
-            pass
-        case Format.SHAPEFILE:
-            pass
-        case Format.PARQUET:
-            pass
-        case Format.GEOPACKAGE:
-            pass
-        case _:
-            raise NotImplementedError(f"Test not implemented for {format} - please add.")
+    if format == Format.GEOJSON:
+        with open(output_file, "r") as f:
+            json.load(f)
+    elif format == Format.FLATGEOBUF:
+        pass
+    elif format == Format.SHAPEFILE:
+        pass
+    elif format == Format.PARQUET:
+        pass
+    elif format == Format.GEOPACKAGE:
+        pass
+    else:
+        raise NotImplementedError(f"Test not implemented for {format} - please add.")
 
 def test_download_unknown_format(aoi: Dict[str, Any]):
     """ Tests that an unknown format (.abc) raises an Exception. """

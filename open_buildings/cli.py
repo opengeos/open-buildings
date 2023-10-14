@@ -62,13 +62,12 @@ def get_buildings(geojson_input, dst, source, country_iso, silent, overwrite, ve
     """
     # map source of google and overture to values for data_path and hive
     # case insensitive matching
-    match source.lower():
-        case "google":
-            source = Source.GOOGLE
-        case "overture":
-            source = Source.OVERTURE
-        case _:
-            raise ValueError(f"Invalid source '{source}', accepted values are {', '.join(v.name.lower() for v in Source)}.")
+    if source.lower() == "google":
+        source = Source.GOOGLE
+    elif source.lower() == "overture":
+        source = Source.OVERTURE
+    else:
+        raise ValueError(f"Invalid source '{source}', accepted values are {', '.join(v.name.lower() for v in Source)}.")
     
     if geojson_input:
         geojson_data = json.load(geojson_input)
