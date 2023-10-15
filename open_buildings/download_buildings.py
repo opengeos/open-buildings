@@ -2,18 +2,21 @@ import json
 import click
 from math import tan, cos, log, pi
 from shapely.geometry import shape
-from typing import Tuple
+from typing import Dict, Any, Union
 import mercantile 
 import duckdb
 import time
+from pathlib import Path
 import datetime
 import os
+from typing import Literal, Optional
 import pandas as pd
 import geopandas as gpd
 import subprocess
 from shapely import wkb
 import shutil
 
+from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
@@ -130,8 +133,76 @@ def quad2json(quadkey_input):
     click.echo(json.dumps(result, indent=2))
 
 
-def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso):
+def download(
+        geojson_data: Dict[str, Any], 
+        dst: Union[Path, str] = "buildings.json",
+        source: Union[Source, str] = Source.OVERTURE,
+        format: Optional[Union[Format, str]] = None, 
+        country_iso: Optional[str] = None,
+        *,
+        generate_sql: bool = False, # whether to actually perform actions or just generate sql
+        verbose: bool = False, # print detailed logs
+        silent: bool = False, # no log output
+        overwrite: bool = False # whether to overwrite existing output file
+    ) -> None:
+    """
+    Extract buildings from online sources.
 
+    Parameters
+    ----------
+    geojson_input : Dict[str, Any]
+        GeoJSON dictionary
+    dst : Path | str
+        The path to write the output to. Can be either a file or a directory.
+        If a directory is provided, a file "buildings.<ext>" will be created at that location.
+    format : string, default "geojson"
+        The output format, alternatively can be extracted from "dst". Explicitly naming the format can be useful if
+        used in combination with a directory as "dst". If both file path and format param is provided, the format param takes
+        precedence.
+    country_iso : str, optional
+        A two-letter ISO-3166 code for the country the AOI (geojson_input) is in. Not required but massively speeds up queries.
+    generate_sql : bool, default False
+        Whether to actually perform DuckDB queries or only generate the SQL.
+    verbose : bool, default False
+        Print more detailed log messages.
+    silent : bool, default False
+        Suppress log messages.
+    overwrite : bool, default False
+        Overwrite existing output files.
+    """
+    # type conversion
+    if type(source) == str:
+        try:
+            source = Source(source.upper())
+        except ValueError:
+            raise ValueError(f"Source {source} is unknown. Please choose one of {' ,'.join([s.name.lower() for s in Source])}.") from e
+
+    if type(format) == str:
+        try:
+            format = Format(format.upper())
+        except ValueError:
+            raise ValueError(f"Format {format} is unknown. Please choose one of {', '.join(f.name.lower() for f in Format)}.") from e
+
+    if type(dst) == str:
+        dst = Path(dst)
+
+    # validate path and extension
+    if os.path.isdir(dst):
+        dst = dst.joinpath("buildings.json")
+
+    if format and dst:
+        # format takes precedence
+        dst = dst.joinpath(f"{dst.stem}.{settings.extensions[format]}")
+
+    if not format and dst:
+        for fmt, ext in settings.extensions.items():
+            if dst.name.endswith(ext):
+                format = fmt
+                break
+        else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
+            raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join([f.name.lower() for f in Format])}.")
+    
+    # utils (should be in separate utils file?)
     def print_timestamped_message(message):
         if not silent:
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -143,15 +214,10 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
         elapsed_time = end_time - start_time
         print_timestamped_message(f"Operation took {elapsed_time:.2f} seconds.")
 
+    # main program
     start_time = time.time()
     if verbose:
         print_timestamped_message("Reading GeoJSON input...")
-
-    # Read the GeoJSON
-    if geojson_input:
-        geojson_data = json.load(geojson_input)
-    else:
-        geojson_data = json.load(click.get_text_stream('stdin'))
 
     if os.path.exists(dst) and not generate_sql:
         if overwrite:
@@ -179,41 +245,25 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
     else:
         print_timestamped_message(f"Expect query times of at least 30 seconds - this can be lessened by using the --country-iso option")
    
+    # download data into DuckDB
+    hive_partitioning = settings.sources[source].hive_partitioning
     hive_value = 1 if hive_partitioning else 0
     select_values = "* EXCLUDE geometry"
-    # if data path is overture and the output is not parquet, then name the values to get
+    # if source is overture and the output is not parquet, then name the values to get
     # so we don't get the crazy structs that gis formats barf on
-    if data_path == "s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-hive/*/*.parquet" and format != "parquet":
+    if source == Source.OVERTURE and format != Format.PARQUET:
         select_values = "id, level, height, numfloors, class, country_iso, quadkey"
-    base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{data_path}', hive_partitioning={hive_value})"
+    base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{settings.sources[source].base_url}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
     if country_iso:
         where_clause += f"country_iso = '{country_iso}' AND "
     where_clause += f"quadkey LIKE '{quadkey}%'"
     where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
-
-    output_extension = {
-        'shapefile': '.shp',
-        'geojson': 'json',
-        'geopackage': '.gpkg',
-        'flatgeobuf': '.fgb',
-        'parquet': '.parquet'
-    }
-
-    if not format:
-        for fmt, ext in output_extension.items():
-            if dst.endswith(ext):
-                format = fmt
-                break
-        else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
-            raise ValueError("Unknown file format. Please specify using --format option.")
-
-    if not dst.endswith(output_extension[format]):
-        dst += output_extension[format]
-
+                
     create_clause = f"CREATE TABLE buildings AS ({base_sql},\n{where_clause});"
     if generate_sql or verbose:
         print_timestamped_message(create_clause)
+
     if not generate_sql:
         conn = duckdb.connect(database=':memory:')
 
@@ -233,10 +283,12 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
             if verbose:
                 print_elapsed_time(start_time)
             return
+    
+    # export to dst
     if not generate_sql:
         print_timestamped_message(f"Writing to {dst}...")
 
-    if format == 'parquet':
+    if format == Format.PARQUET:
         copy_statement = f"COPY buildings TO '{dst}' WITH (FORMAT Parquet);"
         if generate_sql or verbose:
             print_timestamped_message(copy_statement)
@@ -262,10 +314,10 @@ def download(geojson_input, format, generate_sql, dst, silent, overwrite, verbos
                 print(f"Error processing {dst} to geoparquet: {e}")
     else:
         gdal_format = {
-            'shapefile': 'ESRI Shapefile',
-            'geojson': 'GeoJSON',
-            'geopackage': 'GPKG',
-            'flatgeobuf': 'FlatGeobuf'
+            Format.SHAPEFILE: 'ESRI Shapefile',
+            Format.GEOJSON: 'GeoJSON',
+            Format.GEOPACKAGE: 'GPKG',
+            Format.FLATGEOBUF: 'FlatGeobuf'
         }
         conn.execute(f"COPY buildings TO '{dst}' WITH (FORMAT GDAL, DRIVER '{gdal_format[format]}');")
           
@@ -281,4 +333,3 @@ cli.add_command(quad2json)
 
 if __name__ == '__main__':
     cli()
-

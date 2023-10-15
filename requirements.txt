@@ -8,3 +8,4 @@ tabulate
 leafmap
 boto3
 mercantile
+pydantic==2.4.2

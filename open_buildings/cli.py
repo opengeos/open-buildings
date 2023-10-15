@@ -1,12 +1,14 @@
 import sys
 import os
 import click
+import json
 import pandas as pd
 import matplotlib.pyplot as plt
 from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
 from open_buildings.overture.add_columns import process_parquet_files
 from open_buildings.overture.partition import process_db
+from open_buildings.settings import Source
 from datetime import datetime, timedelta
 from tabulate import tabulate
 import boto3  # Required for S3 operations
@@ -59,21 +61,20 @@ def get_buildings(geojson_input, dst, source, country_iso, silent, overwrite, ve
     not use country_iso. In future versions of this tool we hope to eliminate the need to hint with the country_iso.
     """
     # map source of google and overture to values for data_path and hive
-    data_path = None
-    hive_partitioning = False
     # case insensitive matching
     if source.lower() == "google":
-        data_path = "s3://us-west-2.opendata.source.coop/google-research-open-buildings/geoparquet-by-country/*/*.parquet"
-        hive_partitioning = True
+        source = Source.GOOGLE
     elif source.lower() == "overture":
-        data_path = "s3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-hive/*/*.parquet"
-        hive_partitioning = True
+        source = Source.OVERTURE
     else:
-        raise ValueError('Invalid source')
+        raise ValueError(f"Invalid source '{source}', accepted values are {', '.join(v.name.lower() for v in Source)}.")
     
-    format = None # will be set by the extension of the dst file
-    generate_sql = False
-    download_buildings(geojson_input, format, generate_sql, dst, silent, overwrite, verbose, data_path, hive_partitioning, country_iso)
+    if geojson_input:
+        geojson_data = json.load(geojson_input)
+    else:
+        geojson_data = json.load(click.get_text_stream('stdin'))
+    
+    download_buildings(geojson_data, source=source, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
@@ -228,7 +229,6 @@ def overture_download(destination_folder, theme):
     objects = s3.list_objects(Bucket=bucket, Prefix=prefix)
     
     for obj in objects.get('Contents', []):
-        print
         file_name = os.path.basename(obj['Key'])
         local_file_path = os.path.join(destination_folder, file_name)
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
