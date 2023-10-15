@@ -91,7 +91,7 @@ def test_download_directory(aoi: Dict[str, Any], tmp_path: Path):
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
-@pytest.mark.parametrize("format", [f for f in Format if format != Format.SHAPEFILE]) # fails for shapefile!
+@pytest.mark.parametrize("format", [f for f in Format if f != Format.SHAPEFILE]) # fails for shapefile!
 def test_download_format(format: Format, aoi: Dict[str, Any], tmp_path: Path):
     """ Requests data in all file formats defined in the settings. Attempts to validate the output for each of those too. """
     output_file = tmp_path.joinpath(f"output.{settings.extensions[format]}")
