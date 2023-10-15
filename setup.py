@@ -20,7 +20,7 @@ dependency_links = [x.strip().replace("git+", "") for x in all_reqs if "git+" no
 
 setup_requirements = []
 
-test_requirements = ["pytest==7.4.2", "pytest-rerunfailures==12.0", "pytest-xdist==3.3.1"]
+test_requirements = ["codespell==2.2.6", "pytest==7.4.2", "pytest-rerunfailures==12.0", "pytest-xdist==3.3.1"]
 
 setup(
     author="Chris Holmes",
