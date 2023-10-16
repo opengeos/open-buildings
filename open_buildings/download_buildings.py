@@ -1,7 +1,7 @@
 import json
 import click
 from math import tan, cos, log, pi
-from shapely.geometry import shape
+from shapely.geometry import shape, box
 from typing import Dict, Any, Union
 import mercantile 
 import duckdb
@@ -15,6 +15,7 @@ import geopandas as gpd
 import subprocess
 from shapely import wkb
 import shutil
+import osmnx
 
 from open_buildings.settings import Source, Format, settings
 
@@ -42,6 +43,11 @@ def geojson_to_quadkey(data: dict) -> str:
 def geojson_to_wkt(data: dict) -> str:
     geometry = shape(data['geometry'])
     return geometry.wkt
+
+def geocode_to_wkt(data: str):
+    location = ox.geocode_to_gdf(data)
+    wkt = box(*location.total_bounds)
+    return wkt
 
 def quadkey_to_geojson(quadkey: str) -> dict:
     # Convert the quadkey to tile coordinates
