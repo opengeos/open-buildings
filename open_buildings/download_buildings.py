@@ -1,7 +1,7 @@
 import json
 import click
 from math import tan, cos, log, pi
-from shapely.geometry import shape, box, mapping
+from shapely.geometry import shape, box
 from typing import Dict, Any, Union
 import mercantile 
 import duckdb
