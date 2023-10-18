@@ -3,6 +3,8 @@ from typing import Dict, Any
 from pathlib import Path
 import os
 import json
+import re
+import subprocess
 
 from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
 from open_buildings.settings import Source, Format, settings
@@ -91,6 +93,19 @@ def test_download_directory(aoi: Dict[str, Any], tmp_path: Path):
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_download_overwrite(aoi: Dict[str, Any], tmp_path: Path):
+    """ Tests that, if the "overwrite" option is set to True, an existing file does indeed get overwritten. """
+    output_path = tmp_path.joinpath("file_exists.json")
+    with open(output_path, "w") as f:
+        f.write("Foo bar")
+    
+    download(aoi, dst=output_path, country_iso="SC", overwrite=True)
+    assert os.path.exists(output_path)
+    with open(output_path, "r") as f:
+        assert f.read() != "Foo bar" # verify that the file was updated
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
 @pytest.mark.parametrize("format", [f for f in Format if f != Format.SHAPEFILE]) # fails for shapefile!
 def test_download_format(format: Format, aoi: Dict[str, Any], tmp_path: Path):
     """ Requests data in all file formats defined in the settings. Attempts to validate the output for each of those too. """
@@ -118,3 +133,68 @@ def test_download_unknown_format(aoi: Dict[str, Any]):
     """ Tests that an unknown format (.abc) raises an Exception. """
     with pytest.raises(ValueError):
         download(aoi, dst="buildings.abc")
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_from_file_to_directory(aoi: Dict[str, Any], tmp_path: Path):
+    """ 
+    Tests the CLI for get_buildings - provides the path to a GeoJSON file as input and a directory as output path. 
+    Verifies that the output gets written to a default file name in the given directory.
+    """
+    # write aoi dict to geojson file in temporary directory
+    input_path = tmp_path.joinpath("input.json")
+    with open(input_path, "w") as f:
+        json.dump(aoi, f)
+    subprocess.run(["ob", "get_buildings", str(input_path), str(tmp_path), "--country_iso", "SC"])
+    output_path = tmp_path.joinpath("buildings.json") # default file name
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0
+    
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_from_stdin_to_directory(aoi: Dict[str, Any], tmp_path: Path):
+    """ 
+    Tests the CLI for get_buildings - provides a GeoJSON string via stdin and a directory as output path. 
+    Verifies that a log message with timestamp gets written to stdout. 
+    """
+    # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
+    process = subprocess.run([ "ob", "get_buildings", "-", str(tmp_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True,check=True, capture_output=True)
+    dt_regex = re.compile(r"^\[[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}\] ") # match timestamp format e.g. "[2023-10-18 19:08:24]"
+    assert dt_regex.search(process.stdout) # ensure that stdout contains at least one timestamped message
+    output_path = tmp_path.joinpath("buildings.json") # default file name
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_from_stdin_to_file_silent(aoi: Dict[str, Any], tmp_path: Path):
+    """ 
+    Tests the CLI for get_buildings - provides a GeoJSON string via stdin and an exact filepath to write the output to. 
+    Verifies that nothing gets written to stdout. 
+    """
+    output_path = tmp_path.joinpath("test123.json")
+    # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
+    process = subprocess.run(["ob", "get_buildings", "-", str(output_path), "--silent", "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
+    assert process.stdout == "" # assert that nothing gets printed to stdout
+    assert process.stderr == "" # assert that nothing gets printed to stdout
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0
+
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_from_stdin_to_file_overwrite_false(aoi: Dict[str, Any], tmp_path: Path):
+    """ 
+    Tests the CLI for get_buildings - provides a GeoJSON string via stdin and an exact filepath to write the output to. 
+    Verifies that, if the output file already exists, nothing happens and the user is notified of this. 
+    """
+    output_path = tmp_path.joinpath("file_exists.json")
+    with open(output_path, "w") as f:
+        f.write("Foo bar")
+    # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
+    process = subprocess.run(["ob", "get_buildings", "-", str(output_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
+    assert os.path.exists(output_path)
+    with open(output_path, "r") as f:
+        assert f.read() == "Foo bar" # verify that the file still has the same content as before
+    assert "exists" in process.stdout # verify that the user has been warned about the existing file
