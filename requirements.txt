@@ -2,6 +2,7 @@ click
 duckdb
 pandas
 geopandas
+osmnx
 shapely
 openlocationcode
 tabulate
