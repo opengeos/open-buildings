@@ -8,7 +8,7 @@ from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
 from open_buildings.overture.add_columns import process_parquet_files
 from open_buildings.overture.partition import process_db
-from open_buildings.settings import Source
+from settings import Source
 from datetime import datetime, timedelta
 from tabulate import tabulate
 import boto3  # Required for S3 operations
@@ -42,7 +42,8 @@ def handle_comma_separated(ctx, param, value):
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
 @click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-def get_buildings(geojson_input, dst, source, country_iso, silent, overwrite, verbose):
+@click.option('--geocode', default=False, is_flag=True, help='Use city or region name')
+def get_buildings(geojson_input, geocode, dst, source, country_iso, silent, overwrite, verbose):
     """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online. GeoJSON
     input can be provided as a file or piped in from stdin. If no GeoJSON input is provided, the tool will read from stdin.
 
@@ -74,7 +75,7 @@ def get_buildings(geojson_input, dst, source, country_iso, silent, overwrite, ve
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
-    download_buildings(geojson_data, source=source, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
+    download_buildings(geojson_data, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
@@ -161,6 +162,12 @@ def benchmark(
 )
 @click.option(
     '--overwrite', is_flag=True, help="Whether to overwrite any existing output files."
+)
+@click.option(
+    '--geocode',
+    type=str,
+    is_flag=True, 
+    help="Use city or region name instead of geojson"
 )
 @click.option(
     '--process',
