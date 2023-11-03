@@ -302,7 +302,7 @@ def process_with_pandas(
             output_file_path, driver='GPKG', engine="pyogrio", spatial_index=False
         )
     elif format == 'shp':
-        output_gdf.to_file(output_file_path, driver='ESRI Shapefile')
+        output_gdf.to_file(output_file_path, driver='ESRI Shapefile', engine="pyogrio")
 
 
 def process_with_ogr2ogr(
