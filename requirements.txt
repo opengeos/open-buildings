@@ -2,6 +2,7 @@ click
 duckdb
 pandas
 geopandas
+pyogrio
 shapely
 openlocationcode
 tabulate
