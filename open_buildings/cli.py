@@ -42,8 +42,8 @@ def handle_comma_separated(ctx, param, value):
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
 @click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-@click.option('--geocode', default=False, is_flag=True, help='Use city or region name')
-def get_buildings(geojson_input, geocode, dst, source, country_iso, silent, overwrite, verbose):
+@click.option('--location', type=str, default=None, help='Use city or region name')
+def get_buildings(geojson_input, location, dst, source, country_iso, silent, overwrite, verbose):
     """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online. GeoJSON
     input can be provided as a file or piped in from stdin. If no GeoJSON input is provided, the tool will read from stdin.
 
@@ -75,7 +75,7 @@ def get_buildings(geojson_input, geocode, dst, source, country_iso, silent, over
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
-    download_buildings(geojson_data, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
+    download_buildings(geojson_data, location, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))

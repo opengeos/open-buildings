@@ -14,9 +14,10 @@ import pandas as pd
 import geopandas as gpd
 import subprocess
 from shapely import wkb
+from shapely.geometry import mapping 
 import shutil
 import osmnx
-from open_buildings.settings import Source, Format, settings
+from settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
@@ -43,10 +44,11 @@ def geojson_to_wkt(data: dict) -> str:
     geometry = shape(data['geometry'])
     return geometry.wkt
 
-def geocode_to_wkt(data: str):
+def geocode(data: str):
     location = osmnx.geocode_to_gdf(data)
     wkt = box(*location.total_bounds)
-    return wkt
+    geojson = json.dumps(mapping(wkt))
+    return geojson
 
 def quadkey_to_geojson(quadkey: str) -> dict:
     # Convert the quadkey to tile coordinates
@@ -84,24 +86,22 @@ def quadkey(geojson_input):
         geojson_data = json.load(geojson_input)
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
-    
     result = geojson_to_quadkey(geojson_data)
     print()
     click.echo(result)
 
 @cli.command()
 @click.argument('geojson_input', type=click.File('r'), required=False)
-@click.option('--geocode', type=str, is_flag=True, help='geocode using a city or region')
-def WKT(geojson_input, geocode_input):
-    """Convert GeoJSON to Well Known Text."""          
+@click.option('--location', type=str, help='geocode using a city or region')
+def WKT(geojson_input, location):
+    """Convert GeoJSON to Well Known Text."""
     if geojson_input:
-        geojson_data = json.load(geojson_input)
+        result = json.load(geojson_input)
+    elif location:
+        result = geocode(location)
     else:
-        geojson_data = json.load(click.get_text_stream('stdin'))   
-    if geocode_input: 
-        result = geocode_to_wkt(geocode_input)
-    else:
-        result = geojson_to_wkt(geojson_data)
+        geojson_data = json.load(click.get_text_stream('stdin'))  
+        result = geojson_to_wkt(geojson_data) 
     click.echo(result)
 
 
@@ -109,30 +109,30 @@ def WKT(geojson_input, geocode_input):
 @click.argument('geojson_input', type=click.File('r'), required=False)
 @click.option('--only-quadkey', is_flag=True, help='Include only the quadkey in the WHERE clause.')
 @click.option('--local', is_flag=True, help='Use local path for parquet files instead of the S3 URL.')
-# def sql(geojson_input, only_quadkey, local):
-#     """Generate an SQL query based on the input GeoJSON."""
+def sql(geojson_input, only_quadkey, local):
+    """Generate an SQL query based on the input GeoJSON."""
     
-#     # Read the GeoJSON
-#     if geojson_input:
-#         geojson_data = json.load(geojson_input)
-#     else:
-#         geojson_data = json.load(click.get_text_stream('stdin'))
+    # Read the GeoJSON
+    if geojson_input:
+        geojson_data = json.load(geojson_input)
+    else:
+        geojson_data = json.load(click.get_text_stream('stdin'))
 
-#     quadkey = geojson_to_quadkey(geojson_data)
-#     wkt = geojson_to_wkt(geojson_data)
+    quadkey = geojson_to_quadkey(geojson_data)
+    wkt = geojson_to_wkt(geojson_data)
 
-#     # Adjust the path in read_parquet based on the --local flag
-#     path = '*.parquet' if local else 's3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-2/*.parquet'
-#     base_sql = f"select * from read_parquet('{path}')"
+    # Adjust the path in read_parquet based on the --local flag
+    path = '*.parquet' if local else 's3://us-west-2.opendata.source.coop/cholmes/overture/geoparquet-country-quad-2/*.parquet'
+    base_sql = f"select * from read_parquet('{path}')"
     
-#     # Construct the WHERE clause based on the options
-#     where_clause = f"WHERE quadkey LIKE '{quadkey}%'"
-#     if not only_quadkey:
-#         where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
+    # Construct the WHERE clause based on the options
+    where_clause = f"WHERE quadkey LIKE '{quadkey}%'"
+    if not only_quadkey:
+        where_clause += f" AND\nST_Within(ST_GeomFromWKB(geometry), ST_GeomFromText('{wkt}'))"
 
-#     sql_query = f"{base_sql},\n{where_clause}"
-#     full_sql_query = f"COPY ('{sql_query}' TO 'buildings.fgb' WITH (FORMAT GDAL, DRIVER 'FlatGeobuf')"
-#     click.echo(full_sql_query) 
+    sql_query = f"{base_sql},\n{where_clause}"
+    full_sql_query = f"COPY ('{sql_query}' TO 'buildings.fgb' WITH (FORMAT GDAL, DRIVER 'FlatGeobuf')"
+    click.echo(full_sql_query) 
 
 @cli.command()
 @click.argument('quadkey_input', type=str)
@@ -143,7 +143,7 @@ def quad2json(quadkey_input):
 
 def download(
         geojson_data: Dict[str, Any],
-        geocode: Optional[str] = None,
+        #geocode: Optional[str] = None,
         dst: Union[Path, str] = "buildings.json",
         source: Union[Source, str] = Source.OVERTURE,
         format: Optional[Union[Format, str]] = None, 
