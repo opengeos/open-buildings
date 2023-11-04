@@ -65,7 +65,8 @@ def test_quadkey_to_geojson():
 
 def test_geocode():
     """ Tests geocode() using a pre-established true value. """
-    assert geocode('plymouth') == {"type": "Polygon", "coordinates": [[[-4.0196056, 50.3327426], [-4.0196056, 50.4441737], [-4.2055324, 50.4441737], [-4.2055324, 50.3327426], [-4.0196056, 50.3327426]]]}
+    
+    assert json.loads(geocode('plymouth')) == {"type": "Polygon", "coordinates": [[[-4.0196056, 50.3327426], [-4.0196056, 50.4441737], [-4.2055324, 50.4441737], [-4.2055324, 50.3327426], [-4.0196056, 50.3327426]]]}
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
