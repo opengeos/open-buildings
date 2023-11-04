@@ -17,7 +17,7 @@ import shapely
 import geojson
 import shutil
 import osmnx
-from settings import Source, Format, settings
+from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
