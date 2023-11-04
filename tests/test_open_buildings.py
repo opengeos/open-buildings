@@ -58,10 +58,14 @@ def test_geojson_to_wkt(aoi: Dict[str, Any]):
 def test_geojson_to_quadkey(aoi: Dict[str, Any]):
     """ Tests geojson_to_quadkey() using a pre-established true value. """
     assert geojson_to_quadkey(aoi) == '301001330310'
-
+    
 def test_quadkey_to_geojson():
     """ Tests quadkey_to_geojson() using a pre-established true value. """
     assert quadkey_to_geojson('031313131112') == {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[-0.17578125, 51.50874245880333], [-0.087890625, 51.50874245880333], [-0.087890625, 51.56341232867588], [-0.17578125, 51.56341232867588], [-0.17578125, 51.50874245880333]]]}}
+
+def test_geocode():
+    """ Tests geocode() using a pre-established true value. """
+    assert geocode('plymouth') == {"type": "Polygon", "coordinates": [[[-4.0196056, 50.3327426], [-4.0196056, 50.4441737], [-4.2055324, 50.4441737], [-4.2055324, 50.3327426], [-4.0196056, 50.3327426]]]}
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
