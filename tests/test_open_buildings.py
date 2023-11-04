@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import json
 
-from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
+from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson, geocode
 from open_buildings.settings import Source, Format, settings
 
 ###########################################################################
