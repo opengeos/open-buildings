@@ -1,7 +1,7 @@
 import json
 import click
 from math import tan, cos, log, pi
-from shapely.geometry import shape, box
+from shapely.geometry import shape, box, mapping
 from typing import Dict, Any, Union
 import mercantile 
 import duckdb
@@ -14,7 +14,7 @@ import pandas as pd
 import geopandas as gpd
 import subprocess
 from shapely import wkb
-from shapely.geometry import mapping 
+
 import shutil
 import osmnx
 from open_buildings.settings import Source, Format, settings
@@ -87,7 +87,6 @@ def quadkey(geojson_input):
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     result = geojson_to_quadkey(geojson_data)
-    print()
     click.echo(result)
 
 @cli.command()
@@ -143,7 +142,7 @@ def quad2json(quadkey_input):
 
 def download(
         geojson_data: Dict[str, Any],
-        #geocode: Optional[str] = None,
+        location: Optional[str] = None,
         dst: Union[Path, str] = "buildings.json",
         source: Union[Source, str] = Source.OVERTURE,
         format: Optional[Union[Format, str]] = None, 
