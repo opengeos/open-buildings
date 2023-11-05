@@ -3,6 +3,8 @@ import os
 import click
 import json
 import pandas as pd
+import osmnx
+from shapely.geometry import shape, box, mapping
 import matplotlib.pyplot as plt
 from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
@@ -33,6 +35,12 @@ main.add_command(overture)
 
 def handle_comma_separated(ctx, param, value):
     return value.split(',')
+
+def geocode(data: str):
+    location = osmnx.geocode_to_gdf(data)
+    wkt = box(*location.total_bounds)
+    geojson = json.dumps(mapping(wkt))
+    return geojson
 
 @main.command(name="get_buildings")
 @click.argument('geojson_input', type=click.File('r'), required=False)
@@ -72,6 +80,8 @@ def get_buildings(geojson_input, location, dst, source, country_iso, silent, ove
     
     if geojson_input:
         geojson_data = json.load(geojson_input)
+    elif geocode:
+        geojson_data = geocode(location)
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
