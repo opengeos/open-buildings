@@ -1,7 +1,7 @@
 import json
 import click
 from math import tan, cos, log, pi
-from shapely.geometry import shape, box
+from shapely.geometry import shape, box, mapping
 from typing import Dict, Any, Union
 import mercantile 
 import duckdb
@@ -87,7 +87,6 @@ def quadkey(geojson_input):
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     result = geojson_to_quadkey(geojson_data)
-    print()
     click.echo(result)
 
 @cli.command()
