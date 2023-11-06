@@ -22,6 +22,10 @@ from open_buildings.settings import Source, Format, settings
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
         min_lon, min_lat, max_lon, max_lat = data['bbox']
+    elif data['type'] is 'Polygon':
+        coords = data['coordinates'][0]
+        min_lon = min_lat = float('inf')
+        max_lon = max_lat = float('-inf')
     else:
         coords = data['geometry']['coordinates'][0]
         min_lon = min_lat = float('inf')
