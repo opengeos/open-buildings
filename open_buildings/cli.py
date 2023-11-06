@@ -10,7 +10,7 @@ from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
 from open_buildings.overture.add_columns import process_parquet_files
 from open_buildings.overture.partition import process_db
-from settings import Source
+from open_buildings.settings import Source
 from datetime import datetime, timedelta
 from tabulate import tabulate
 import boto3  # Required for S3 operations
