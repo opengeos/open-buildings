@@ -44,6 +44,12 @@ def geojson_to_wkt(data: dict) -> str:
     geometry = shape(data['geometry'])
     return geometry.wkt
 
+def geocode(data: str):
+    location = osmnx.geocode_to_gdf(data)
+    wkt = box(*location.total_bounds)
+    g2 = geojson.Feature(geometry=wkt)
+    return (g2)
+
 def quadkey_to_geojson(quadkey: str) -> dict:
     # Convert the quadkey to tile coordinates
     tile = mercantile.quadkey_to_tile(quadkey)
