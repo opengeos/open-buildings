@@ -14,7 +14,7 @@ import pandas as pd
 import geopandas as gpd
 import subprocess
 import shapely
-
+import geojson
 import shutil
 import osmnx
 from open_buildings.settings import Source, Format, settings
@@ -22,10 +22,6 @@ from open_buildings.settings import Source, Format, settings
 def geojson_to_quadkey(data: dict) -> str:
     if 'bbox' in data:
         min_lon, min_lat, max_lon, max_lat = data['bbox']
-    elif data['type'] == 'Polygon':
-        coords = data['coordinates'][0]
-        min_lon = min_lat = float('inf')
-        max_lon = max_lat = float('-inf')
     else:
         coords = data['geometry']['coordinates'][0]
         min_lon = min_lat = float('inf')
@@ -51,8 +47,8 @@ def geojson_to_wkt(data: dict) -> str:
 def geocode(data: str):
     location = osmnx.geocode_to_gdf(data)
     wkt = box(*location.total_bounds)
-    geojson = shapely.to_geojson(wkt)
-    return geojson
+    g2 = geojson.Feature(geometry=wkt)
+    return (g2)
 
 def quadkey_to_geojson(quadkey: str) -> dict:
     # Convert the quadkey to tile coordinates
