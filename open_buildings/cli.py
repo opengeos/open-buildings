@@ -85,7 +85,7 @@ def get_buildings(geojson_input, dst, location, source, country_iso, silent, ove
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
-    download_buildings(geojson_data, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
+    download_buildings(geojson_data, source=source, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
@@ -172,12 +172,6 @@ def benchmark(
 )
 @click.option(
     '--overwrite', is_flag=True, help="Whether to overwrite any existing output files."
-)
-@click.option(
-    '--geocode',
-    type=str,
-    is_flag=True, 
-    help="Use city or region name instead of geojson"
 )
 @click.option(
     '--process',

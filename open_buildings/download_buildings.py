@@ -44,12 +44,6 @@ def geojson_to_wkt(data: dict) -> str:
     geometry = shape(data['geometry'])
     return geometry.wkt
 
-def geocode(data: str):
-    location = osmnx.geocode_to_gdf(data)
-    wkt = box(*location.total_bounds)
-    g2 = geojson.Feature(geometry=wkt)
-    return (g2)
-
 def quadkey_to_geojson(quadkey: str) -> dict:
     # Convert the quadkey to tile coordinates
     tile = mercantile.quadkey_to_tile(quadkey)
@@ -94,10 +88,11 @@ def quadkey(geojson_input):
 def WKT(geojson_input):
     """Convert GeoJSON to Well Known Text."""
     if geojson_input:
-        result = json.load(geojson_input)
+        geojson_data = json.load(geojson_input)
     else:
-        geojson_data = json.load(click.get_text_stream('stdin'))  
-        result = geojson_to_wkt(geojson_data) 
+        geojson_data = json.load(click.get_text_stream('stdin'))
+    
+    result = geojson_to_wkt(geojson_data)
     click.echo(result)
 
 
