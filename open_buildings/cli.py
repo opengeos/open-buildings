@@ -39,19 +39,19 @@ def handle_comma_separated(ctx, param, value):
 def geocode(data: str):
     location = osmnx.geocode_to_gdf(data)
     wkt = box(*location.total_bounds)
-    geojson = json.dumps(mapping(wkt))
+    geojson = json.loads(json.dumps({"type": "Feature", "geometry": mapping(wkt)})) # turn geom tuple into list by (de-)serialising
     return geojson
 
 @main.command(name="get_buildings")
 @click.argument('geojson_input', type=click.File('r'), required=False)
-@click.argument('dst', type=str, default="buildings.json")
+@click.option('--dst', type=str, default="buildings.json", help='The path to write the output to. Can be a directory or file.')
+@click.option('--location', type=str, default=None, help='Use city or region name')
 @click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query, defaults to Overture')
 @click.option('--country_iso', type=str, default=None, help='A 2 character country ISO code to filter the data by.')
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
-@click.option('--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-@click.option('--location', type=str, default=None, help='Use city or region name')
-def get_buildings(geojson_input, location, dst, source, country_iso, silent, overwrite, verbose):
+@click.option('-v', '--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
+def get_buildings(geojson_input, dst, location, source, country_iso, silent, overwrite, verbose):
     """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online. GeoJSON
     input can be provided as a file or piped in from stdin. If no GeoJSON input is provided, the tool will read from stdin.
 
@@ -80,12 +80,12 @@ def get_buildings(geojson_input, location, dst, source, country_iso, silent, ove
     
     if geojson_input:
         geojson_data = json.load(geojson_input)
-    elif geocode:
+    elif location:
         geojson_data = geocode(location)
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
-    download_buildings(geojson_data, location, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
+    download_buildings(geojson_data, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
