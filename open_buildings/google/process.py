@@ -210,14 +210,13 @@ def process_with_pandas(
     input_file_path, split_multipolygons, verbose, format, output_file_path
 ):
     df = pd.read_csv(input_file_path)
-    df['geometry'] = df['geometry'].apply(wkt.loads)
+    gs = gpd.GeoSeries.from_wkt(df['geometry'])
 
-    # Drop the 'latitude' and 'longitude' columns
-    df = df.drop(['latitude', 'longitude'], axis=1)
+    # Drop the 'latitude', 'longitude' and 'geometry' columns
+    df = df.drop(['latitude', 'longitude', 'geometry'], axis=1)
 
     # Convert the DataFrame to a GeoDataFrame
-    gdf = gpd.GeoDataFrame(df, geometry='geometry')
-    gdf.set_crs("EPSG:4326", inplace=True)
+    gdf = gpd.GeoDataFrame(df, geometry=gs, crs="EPSG:4326")
 
     # Create an empty GeoDataFrame for the output
     output_gdf = gpd.GeoDataFrame(columns=list(gdf.columns), crs=gdf.crs)
@@ -295,13 +294,15 @@ def process_with_pandas(
         )
     # Write the output GeoDataFrame to a file
     if format == 'fgb':
-        output_gdf.to_file(output_file_path, driver="FlatGeobuf")
+        output_gdf.to_file(output_file_path, driver="FlatGeobuf", engine="pyogrio")
     elif format == 'parquet':
         output_gdf.to_parquet(output_file_path, compression=PARQUET_COMPRESSION)
     elif format == 'gpkg':
-        output_gdf.to_file(output_file_path, driver='GPKG')
+        output_gdf.to_file(
+            output_file_path, driver='GPKG', engine="pyogrio", spatial_index=False
+        )
     elif format == 'shp':
-        output_gdf.to_file(output_file_path, driver='ESRI Shapefile')
+        output_gdf.to_file(output_file_path, driver='ESRI Shapefile', engine="pyogrio")
 
 
 def process_with_ogr2ogr(
