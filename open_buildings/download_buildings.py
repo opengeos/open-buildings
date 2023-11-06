@@ -13,7 +13,7 @@ from typing import Literal, Optional
 import pandas as pd
 import geopandas as gpd
 import subprocess
-from shapely import wkb
+import shapely
 
 import shutil
 import osmnx
@@ -51,7 +51,7 @@ def geojson_to_wkt(data: dict) -> str:
 def geocode(data: str):
     location = osmnx.geocode_to_gdf(data)
     wkt = box(*location.total_bounds)
-    geojson = json.dumps(mapping(wkt))
+    geojson = shapely.to_geojson(wkt)
     return geojson
 
 def quadkey_to_geojson(quadkey: str) -> dict:
