@@ -211,6 +211,6 @@ def test_cli_get_buildings_geocode(tmp_path: Path):
     Tests the geocoding functionality, implemented as the argument "location".
     """
     output_path = tmp_path.joinpath("geocode_test.json")
-    subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "oxford uk", "--country_iso", "UK"], check=True)
+    subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "oxford uk", "--country_iso", "GB"], check=True)
     assert os.path.exists(output_path)
     assert os.path.getsize(output_path) != 0
