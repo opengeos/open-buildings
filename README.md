@@ -45,13 +45,13 @@ Will print out a help message. You then will be able run the CLI (download [1.js
 
 
 ```bash
-ob tools get_buildings 1.json my-buildings.geojson --country_iso RW
+ob tools get_buildings 1.json --dst my-buildings.geojson --country_iso RW
 ```
 
 You can also stream the json in directly in one line:
 
 ```
-curl https://data.source.coop/cholmes/aois/1.json | ob get_buildings - my-buildings.geojson --country_iso RW
+curl https://data.source.coop/cholmes/aois/1.json | ob get_buildings - --dst my-buildings.geojson --country_iso RW
 ```
 
 
@@ -96,13 +96,17 @@ Usage: ob get_buildings [OPTIONS] [GEOJSON_INPUT] [DST]
   this tool we hope to eliminate the need to hint with the country_iso.
 
 Options:
+  --dst TEXT                  The path to write the output to. Can be a
+                              directory or file.
+  --location TEXT             Use city or region name instead of providing an
+                              AOI as file.
   --source [google|overture]  Dataset to query, defaults to Overture
   --country_iso TEXT          A 2 character country ISO code to filter the
                               data by.
   -s, --silent                Suppress all print outputs.
   --overwrite                 Overwrite the destination file if it already
                               exists.
-  --verbose                   Print detailed logs with timestamps.
+  -v, --verbose               Print detailed logs with timestamps.
   --help                      Show this message and exit.
 ```
 

@@ -20,18 +20,8 @@ import osmnx
 from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
-    if 'bbox' in data:
-        min_lon, min_lat, max_lon, max_lat = data['bbox']
-    else:
-        coords = data['geometry']['coordinates'][0]
-        min_lon = min_lat = float('inf')
-        max_lon = max_lat = float('-inf')
-        
-        for lon, lat in coords:
-            min_lon = min(min_lon, lon)
-            min_lat = min(min_lat, lat)
-            max_lon = max(max_lon, lon)
-            max_lat = max(max_lat, lat)
+    geom = shape(data["geometry"])
+    min_lon, min_lat, max_lon, max_lat = geom.bounds
 
     for zoom in range(12, -1, -1):
         tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, zooms=zoom))

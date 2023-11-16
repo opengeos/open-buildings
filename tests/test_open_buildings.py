@@ -3,6 +3,7 @@ from typing import Dict, Any
 from pathlib import Path
 import os
 import json
+from shapely.geometry import shape, box, mapping
 import re
 import subprocess
 
@@ -67,8 +68,10 @@ def test_quadkey_to_geojson():
     assert quadkey_to_geojson('031313131112') == {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[-0.17578125, 51.50874245880333], [-0.087890625, 51.50874245880333], [-0.087890625, 51.56341232867588], [-0.17578125, 51.56341232867588], [-0.17578125, 51.50874245880333]]]}}
 
 def test_geocode():
-    """ Tests geocode() using a pre-established true value. """
-    assert geocode('plymouth') == {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [[[-4.0196056, 50.3327426], [-4.0196056, 50.4441737], [-4.2055324, 50.4441737], [-4.2055324, 50.3327426], [-4.0196056, 50.3327426]]]}}
+    """ Tests geocode() using a pre-established true value. Verifies the bbox of the returned geometry. """
+    geocoding_result = geocode('plymouth')
+    assert geocoding_result["type"] == "Feature"
+    assert shape(geocoding_result["geometry"]).bounds == (-4.2055324, 50.3327426, -4.0196056, 50.4441737)
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
@@ -212,5 +215,17 @@ def test_cli_get_buildings_geocode(tmp_path: Path):
     """
     output_path = tmp_path.joinpath("geocode_test.json")
     subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "oxford uk", "--country_iso", "GB"], check=True)
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_geocode_multipolygon(tmp_path: Path):
+    """ 
+    Tests the geocoding functionality, implemented as the argument "location". Makes sure that a MultiPolygon geometry (the outline of Dubrovnik)
+    is simplified to a polygon (convex hull).
+    """
+    output_path = tmp_path.joinpath("geocode_test.json")
+    subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "dubrovnik", "--country_iso", "HR"], check=True)
     assert os.path.exists(output_path)
     assert os.path.getsize(output_path) != 0

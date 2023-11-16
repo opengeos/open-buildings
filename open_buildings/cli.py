@@ -38,14 +38,14 @@ def handle_comma_separated(ctx, param, value):
 
 def geocode(data: str):
     location = osmnx.geocode_to_gdf(data)
-    wkt = box(*location.total_bounds)
-    geojson = json.loads(json.dumps({"type": "Feature", "geometry": mapping(wkt)})) # turn geom tuple into list by (de-)serialising
+    geom = location.geometry[0]
+    geojson = json.loads(json.dumps({"type": "Feature", "geometry": mapping(geom)})) # turn geom tuple into list by (de-)serialising
     return geojson
 
 @main.command(name="get_buildings")
 @click.argument('geojson_input', type=click.File('r'), required=False)
 @click.option('--dst', type=str, default="buildings.json", help='The path to write the output to. Can be a directory or file.')
-@click.option('--location', type=str, default=None, help='Use city or region name')
+@click.option('--location', type=str, default=None, help='Use city or region name instead of providing an AOI as file.')
 @click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query, defaults to Overture')
 @click.option('--country_iso', type=str, default=None, help='A 2 character country ISO code to filter the data by.')
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
