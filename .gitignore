@@ -4,6 +4,7 @@ private/
 *.py[cod]
 *$py.class
 
+cache
 issues.txt
 
 # C extensions

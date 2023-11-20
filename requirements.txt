@@ -3,6 +3,7 @@ duckdb
 pandas
 geopandas
 pyogrio
+osmnx
 shapely
 openlocationcode
 tabulate

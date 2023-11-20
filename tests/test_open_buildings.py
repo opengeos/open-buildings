@@ -3,10 +3,12 @@ from typing import Dict, Any
 from pathlib import Path
 import os
 import json
+from shapely.geometry import shape, box, mapping
 import re
 import subprocess
 
 from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
+from open_buildings.cli import geocode
 from open_buildings.settings import Source, Format, settings
 
 ###########################################################################
@@ -60,10 +62,16 @@ def test_geojson_to_wkt(aoi: Dict[str, Any]):
 def test_geojson_to_quadkey(aoi: Dict[str, Any]):
     """ Tests geojson_to_quadkey() using a pre-established true value. """
     assert geojson_to_quadkey(aoi) == '301001330310'
-
+    
 def test_quadkey_to_geojson():
     """ Tests quadkey_to_geojson() using a pre-established true value. """
     assert quadkey_to_geojson('031313131112') == {'type': 'Feature', 'geometry': {'type': 'Polygon', 'coordinates': [[[-0.17578125, 51.50874245880333], [-0.087890625, 51.50874245880333], [-0.087890625, 51.56341232867588], [-0.17578125, 51.56341232867588], [-0.17578125, 51.50874245880333]]]}}
+
+def test_geocode():
+    """ Tests geocode() using a pre-established true value. Verifies the bbox of the returned geometry. """
+    geocoding_result = geocode('plymouth')
+    assert geocoding_result["type"] == "Feature"
+    assert shape(geocoding_result["geometry"]).bounds == (-4.2055324, 50.3327426, -4.0196056, 50.4441737)
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
@@ -145,7 +153,7 @@ def test_cli_get_buildings_from_file_to_directory(aoi: Dict[str, Any], tmp_path:
     input_path = tmp_path.joinpath("input.json")
     with open(input_path, "w") as f:
         json.dump(aoi, f)
-    subprocess.run(["ob", "get_buildings", str(input_path), str(tmp_path), "--country_iso", "SC"])
+    subprocess.run(["ob", "get_buildings", str(input_path), "--dst", str(tmp_path), "--country_iso", "SC"], check=True)
     output_path = tmp_path.joinpath("buildings.json") # default file name
     assert os.path.exists(output_path)
     assert os.path.getsize(output_path) != 0
@@ -159,7 +167,7 @@ def test_cli_get_buildings_from_stdin_to_directory(aoi: Dict[str, Any], tmp_path
     Verifies that a log message with timestamp gets written to stdout. 
     """
     # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
-    process = subprocess.run([ "ob", "get_buildings", "-", str(tmp_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True,check=True, capture_output=True)
+    process = subprocess.run([ "ob", "get_buildings", "-", "--dst", str(tmp_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
     dt_regex = re.compile(r"^\[[0-9]{4}(-[0-9]{2}){2} ([0-9]{2}:){2}[0-9]{2}\] ") # match timestamp format e.g. "[2023-10-18 19:08:24]"
     assert dt_regex.search(process.stdout) # ensure that stdout contains at least one timestamped message
     output_path = tmp_path.joinpath("buildings.json") # default file name
@@ -175,7 +183,7 @@ def test_cli_get_buildings_from_stdin_to_file_silent(aoi: Dict[str, Any], tmp_pa
     """
     output_path = tmp_path.joinpath("test123.json")
     # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
-    process = subprocess.run(["ob", "get_buildings", "-", str(output_path), "--silent", "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
+    process = subprocess.run(["ob", "get_buildings", "-", "--dst", str(output_path), "--silent", "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
     assert process.stdout == "" # assert that nothing gets printed to stdout
     assert process.stderr == "" # assert that nothing gets printed to stdout
     assert os.path.exists(output_path)
@@ -193,8 +201,31 @@ def test_cli_get_buildings_from_stdin_to_file_overwrite_false(aoi: Dict[str, Any
     with open(output_path, "w") as f:
         f.write("Foo bar")
     # we can't use pipes (e.g. f"echo {json.dumps(aoi)} | ...") in subprocess.run, instead we pass the json as stdin using the input/text arguments,
-    process = subprocess.run(["ob", "get_buildings", "-", str(output_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
+    process = subprocess.run(["ob", "get_buildings", "-", "--dst", str(output_path), "--country_iso", "SC"], input=json.dumps(aoi), text=True, check=True, capture_output=True)
     assert os.path.exists(output_path)
     with open(output_path, "r") as f:
         assert f.read() == "Foo bar" # verify that the file still has the same content as before
     assert "exists" in process.stdout # verify that the user has been warned about the existing file
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_geocode(tmp_path: Path):
+    """ 
+    Tests the geocoding functionality, implemented as the argument "location".
+    """
+    output_path = tmp_path.joinpath("geocode_test.json")
+    subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "oxford uk", "--country_iso", "GB"], check=True)
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0
+
+@pytest.mark.integration
+@pytest.mark.flaky(reruns=NUM_RERUNS)
+def test_cli_get_buildings_geocode_multipolygon(tmp_path: Path):
+    """ 
+    Tests the geocoding functionality, implemented as the argument "location". Makes sure that a MultiPolygon geometry (the outline of Dubrovnik)
+    is simplified to a polygon (convex hull).
+    """
+    output_path = tmp_path.joinpath("geocode_test.json")
+    subprocess.run(["ob", "get_buildings", "--dst", str(output_path), "--location", "dubrovnik", "--country_iso", "HR"], check=True)
+    assert os.path.exists(output_path)
+    assert os.path.getsize(output_path) != 0

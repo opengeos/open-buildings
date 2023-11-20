@@ -1,7 +1,7 @@
 import json
 import click
 from math import tan, cos, log, pi
-from shapely.geometry import shape
+from shapely.geometry import shape, box, mapping
 from typing import Dict, Any, Union
 import mercantile 
 import duckdb
@@ -13,24 +13,15 @@ from typing import Literal, Optional
 import pandas as pd
 import geopandas as gpd
 import subprocess
-from shapely import wkb
+import shapely
+import geojson
 import shutil
-
+import osmnx
 from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
-    if 'bbox' in data:
-        min_lon, min_lat, max_lon, max_lat = data['bbox']
-    else:
-        coords = data['geometry']['coordinates'][0]
-        min_lon = min_lat = float('inf')
-        max_lon = max_lat = float('-inf')
-        
-        for lon, lat in coords:
-            min_lon = min(min_lon, lon)
-            min_lat = min(min_lat, lat)
-            max_lon = max(max_lon, lon)
-            max_lat = max(max_lat, lat)
+    geom = shape(data["geometry"])
+    min_lon, min_lat, max_lon, max_lat = geom.bounds
 
     for zoom in range(12, -1, -1):
         tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, zooms=zoom))
@@ -79,7 +70,6 @@ def quadkey(geojson_input):
         geojson_data = json.load(geojson_input)
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
-    
     result = geojson_to_quadkey(geojson_data)
     click.echo(result)
 
@@ -132,9 +122,8 @@ def quad2json(quadkey_input):
     result = quadkey_to_geojson(quadkey_input)
     click.echo(json.dumps(result, indent=2))
 
-
 def download(
-        geojson_data: Dict[str, Any], 
+        geojson_data: Dict[str, Any],
         dst: Union[Path, str] = "buildings.json",
         source: Union[Source, str] = Source.OVERTURE,
         format: Optional[Union[Format, str]] = None, 
