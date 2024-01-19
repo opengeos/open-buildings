@@ -78,7 +78,7 @@ nav:
     - Contributing: contributing.md
     - FAQ: faq.md
     - Changelog: changelog.md
-    - Report Issues: https://github.com/cholmes/open-buildings/issues
+    - Report Issues: https://github.com/opengeos/open-buildings/issues
     - Examples:
           - examples/download_buildings.ipynb
     - API Reference:
