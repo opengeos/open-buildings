@@ -129,14 +129,9 @@ def process_parquet_files(input_path, output_folder, country_parquet_path, overw
         process_parquet_file(input_path, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option, verbose)
 
 # Call the function - uncomment if you want to call this directly from python and put values in here.
-import pathlib
+# OVERTURE_DIR = pathlib.Path('~/data/src/overture/2024-02-15-alpha.0').expanduser()
+# OUT_DIR = pathlib.Path('~/data/prc/overture/2024-02-15')
+# ADMIN_BOUNDARIES_LEVEL_1_FP = pathlib.Path("~/data/prc/overture/2024-02-15/admin_boundaries_level_1.parquet")
 
-release_version = "overture_02-15"  # Example version, adjust as necessary
-data_dir = pathlib.Path.home() / "data" / "src" / f"{release_version}" / "theme=buildings" / "type=building"
-out_dir = pathlib.Path.home() / "data" / "prc" / f"{release_version}" / "theme=buildings" / "type=building"
+# process_parquet_files(str(OVERTURE_DIR), str(OUT_DIR), str(ADMIN_BOUNDARIES_LEVEL_1_FP), overwrite=False, add_quadkey_option=True, add_country_iso_option=False)
 
-input_path = data_dir / "part-00041-a34b09ea-399f-4872-b0b1-084a81bbb42f-c000.zstd.parquet"
-#input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
-#output_folder = '/Volumes/fastdata/overture/refined-parquet/'
-#country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
-process_parquet_files(input_path, out_dir, "", overwrite=False, add_quadkey_option=True, add_country_iso_option=False)
