@@ -8,6 +8,7 @@ from shapely import wkb
 
 def main(admin_level, overture_dir, out_dir):
     con = duckdb.connect(database=":memory:", read_only=False)
+    con.execute("INSTALL spatial;")
     con.execute("LOAD spatial;")
 
     out_dir = pathlib.Path(out_dir).expanduser()
