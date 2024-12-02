@@ -4,6 +4,9 @@
 
 **Tools for working with open building datasets**
 
+***Warning**: This code has fallen out of maintenance, and isn't keeping up with the latest release. [Overture](https://overturemaps.org) has incorporated
+the Google and Microsoft datasets, and has fully adopted GeoParuqet & partitioned it, and provides a [nice cli](https://github.com/OvertureMaps/overturemaps-py) to download data. So I'd recommend using that, but will keep this code up for anyone interested.*
+
 -   Free software: Apache Software License 2.0
 -   Documentation: <https://opengeos.github.io/open-buildings>
 -   Creator: [Chris Holmes](https://github.com/cholmes)
