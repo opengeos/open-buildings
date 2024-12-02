@@ -4,15 +4,17 @@
 # parquet to geoparquet.
 
 
-import os
-import duckdb
-import time
-import tempfile
-import subprocess
 import glob
-from duckdb.typing import *
-import mercantile
+import os
 import shutil
+import subprocess
+import tempfile
+import time
+
+import duckdb
+import mercantile
+from duckdb.typing import *
+
 
 def lat_lon_to_quadkey(lat: DOUBLE, lon: DOUBLE, level: INTEGER) -> VARCHAR:
     # Convert latitude and longitude to tile using mercantile
@@ -43,6 +45,7 @@ def add_quadkey(con):
         12
     );
     """)
+
 
 def add_country_iso(con, country_parquet_path):
     # Load country parquet file into duckdb
@@ -88,8 +91,8 @@ def process_parquet_file(input_parquet_path, output_folder, country_parquet_path
     
     con.execute('LOAD spatial;')
 
-    # Load parquet file into duckdb
-    con.execute(f"CREATE TABLE buildings AS SELECT * FROM read_parquet('{input_parquet_path}')")
+    # NOTE: exclude names column because it's all NULL and causes InternalException: INTERNAL Error: Attempted to dereference unique_ptr that is NULL!
+    con.execute(f"CREATE OR REPLACE TABLE buildings AS SELECT * EXCLUDE(names) FROM read_parquet('{input_parquet_path}')")
     
     if add_quadkey_option:
         add_quadkey(con)
@@ -126,7 +129,9 @@ def process_parquet_files(input_path, output_folder, country_parquet_path, overw
         process_parquet_file(input_path, output_folder, country_parquet_path, overwrite, add_quadkey_option, add_country_iso_option, verbose)
 
 # Call the function - uncomment if you want to call this directly from python and put values in here.
-#input_path = '/Volumes/fastdata/overture/s3-data/buildings/'
-#output_folder = '/Volumes/fastdata/overture/refined-parquet/'
-#country_parquet_path = '/Volumes/fastdata/overture/countries.parquet'
-#process_parquet_files(input_path, output_folder, country_parquet_path, overwrite=False, add_quadkey_option=True, add_country_iso_option=True)
+# OVERTURE_DIR = pathlib.Path('~/data/src/overture/2024-02-15-alpha.0').expanduser()
+# OUT_DIR = pathlib.Path('~/data/prc/overture/2024-02-15')
+# ADMIN_BOUNDARIES_LEVEL_1_FP = pathlib.Path("~/data/prc/overture/2024-02-15/admin_boundaries_level_1.parquet")
+
+# process_parquet_files(str(OVERTURE_DIR), str(OUT_DIR), str(ADMIN_BOUNDARIES_LEVEL_1_FP), overwrite=False, add_quadkey_option=True, add_country_iso_option=False)
+
