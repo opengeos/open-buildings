@@ -5,7 +5,6 @@ import json
 import pandas as pd
 import osmnx
 from shapely.geometry import shape, box, mapping
-import matplotlib.pyplot as plt
 from open_buildings.google.process import process_benchmark, process_geometries
 from open_buildings.download_buildings import download as download_buildings
 from open_buildings.overture.add_columns import process_parquet_files
@@ -13,7 +12,6 @@ from open_buildings.overture.partition import process_db
 from open_buildings.settings import Source
 from datetime import datetime, timedelta
 from tabulate import tabulate
-import boto3  # Required for S3 operations
 
 @click.group()
 def main():
@@ -37,7 +35,14 @@ def handle_comma_separated(ctx, param, value):
     return value.split(',')
 
 def geocode(data: str):
-    location = osmnx.geocode_to_gdf(data)
+    try:
+        location = osmnx.geocode_to_gdf(data)
+    except Exception as e:
+        error_msg = str(e)
+        raise click.ClickException(
+            f"Could not geocode location '{data}'. {error_msg}\n"
+            f"Hint: Try a more specific place name, or provide a GeoJSON file directly."
+        )
     geom = location.geometry[0]
     geojson = json.loads(json.dumps({"type": "Feature", "geometry": mapping(geom)})) # turn geom tuple into list by (de-)serialising
     return geojson
@@ -144,6 +149,12 @@ def benchmark(
         elif format == 'json':
             df.to_json(f"{output_directory}/{file_name}_benchmark.json", orient='split', indent=4)
         elif format == 'chart':
+            try:
+                import matplotlib.pyplot as plt
+            except ImportError:
+                raise click.ClickException(
+                    "matplotlib is required for chart output. Install it with: pip install matplotlib"
+                )
             df.plot(kind='bar', rot=0)
             plt.title(f'Benchmark for file: {base_name}')
             plt.xlabel('Process')
@@ -230,6 +241,12 @@ def add_columns(
 )
 def overture_download(destination_folder, theme):
     """Download building files from S3 (can change theme for other overture data)."""
+    try:
+        import boto3
+    except ImportError:
+        raise click.ClickException(
+            "boto3 is required for S3 downloads. Install it with: pip install open-buildings[aws]"
+        )
 
     os.makedirs(destination_folder, exist_ok=True)
 

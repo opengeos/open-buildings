@@ -61,6 +61,26 @@ setup(
     version='0.10.0',
     zip_safe=False,
     extras_require={
-        'dev':  test_requirements,
+        'dev': test_requirements,
+        'docs': [
+            'mkdocs',
+            'mkdocs-git-revision-date-plugin',
+            'mkdocs-git-revision-date-localized-plugin',
+            'mkdocs-jupyter>=0.24.0',
+            'mkdocs-material>=9.1.3',
+            'mkdocs-pdf-export-plugin',
+            'mkdocstrings',
+            'mkdocstrings-crystal',
+            'mkdocstrings-python-legacy',
+            'pygments',
+            'pymdown-extensions',
+        ],
+        'aws': ['boto3'],
+        'viz': ['matplotlib', 'leafmap'],
+        'all': [
+            'boto3',
+            'matplotlib',
+            'leafmap',
+        ],
     }
 )

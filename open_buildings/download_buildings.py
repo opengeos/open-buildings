@@ -1,22 +1,17 @@
 import json
 import click
-from math import tan, cos, log, pi
 from shapely.geometry import shape, box, mapping
-from typing import Dict, Any, Union
-import mercantile 
+from shapely import wkb
+from typing import Dict, Any, Union, Optional
+import mercantile
 import duckdb
 import time
 from pathlib import Path
 import datetime
 import os
-from typing import Literal, Optional
 import pandas as pd
 import geopandas as gpd
-import subprocess
-import shapely
-import geojson
 import shutil
-import osmnx
 from open_buildings.settings import Source, Format, settings
 
 def geojson_to_quadkey(data: dict) -> str:
@@ -160,19 +155,19 @@ def download(
         Overwrite existing output files.
     """
     # type conversion
-    if type(source) == str:
+    if isinstance(source, str):
         try:
             source = Source(source.upper())
-        except ValueError:
+        except ValueError as e:
             raise ValueError(f"Source {source} is unknown. Please choose one of {' ,'.join([s.name.lower() for s in Source])}.") from e
 
-    if type(format) == str:
+    if isinstance(format, str):
         try:
             format = Format(format.upper())
-        except ValueError:
+        except ValueError as e:
             raise ValueError(f"Format {format} is unknown. Please choose one of {', '.join(f.name.lower() for f in Format)}.") from e
 
-    if type(dst) == str:
+    if isinstance(dst, str):
         dst = Path(dst)
 
     # validate path and extension
