@@ -129,6 +129,7 @@ def download(
         format: Optional[Union[Format, str]] = None, 
         country_iso: Optional[str] = None,
         *,
+        count_only: bool = False, # whether to only report the matching feature count
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
         verbose: bool = False, # print detailed logs
         silent: bool = False, # no log output
@@ -150,6 +151,8 @@ def download(
         precedence.
     country_iso : str, optional
         A two-letter ISO-3166 code for the country the AOI (geojson_input) is in. Not required but massively speeds up queries.
+    count_only : bool, default False
+        Only count matching buildings without writing an output file.
     generate_sql : bool, default False
         Whether to actually perform DuckDB queries or only generate the SQL.
     verbose : bool, default False
@@ -208,7 +211,7 @@ def download(
     if verbose:
         print_timestamped_message("Reading GeoJSON input...")
 
-    if os.path.exists(dst) and not generate_sql:
+    if os.path.exists(dst) and not generate_sql and not count_only:
         if overwrite:
             if verbose:
                 print_timestamped_message(f"Deleting existing file at {dst}.")
@@ -264,6 +267,14 @@ def download(
         conn.execute(create_clause)
 
         count = conn.execute("SELECT COUNT(*) FROM buildings;").fetchone()[0]
+
+        if count_only:
+            print_timestamped_message(f"Found {count} matching features.")
+            if count == 0 and country_iso is not None:
+                print_timestamped_message(f"If you are sure that your GeoJSON should have buildings then check to be sure that {country_iso} is the right code.")
+            if verbose:
+                print_elapsed_time(start_time)
+            return count
 
         print_timestamped_message(f"Downloaded {count} features into DuckDB.")
         if count == 0:
