@@ -44,6 +44,39 @@ def define_output_paths(input_file_path, output_directory, format):
     return output_file_path, duckdb_file_path
 
 
+def output_size_mb(output_file_path):
+    if output_file_path.endswith(".shp"):
+        base_name = os.path.splitext(output_file_path)[0]
+        matching_files = glob.glob(f"{base_name}.*")
+        size_bytes = sum(os.path.getsize(path) for path in matching_files)
+    elif os.path.exists(output_file_path):
+        size_bytes = os.path.getsize(output_file_path)
+    else:
+        return None
+
+    return size_bytes / (1024 * 1024)
+
+
+def benchmark_output_size_mb(input_path, output_directory, format):
+    if os.path.isdir(input_path):
+        csv_files = glob.glob(os.path.join(input_path, '*.csv'))
+    else:
+        csv_files = [input_path]
+
+    total_size = 0
+    found_output = False
+    for input_file_path in csv_files:
+        output_file_path, _ = define_output_paths(
+            input_file_path, output_directory, format
+        )
+        file_size = output_size_mb(output_file_path)
+        if file_size is not None:
+            total_size += file_size
+            found_output = True
+
+    return total_size if found_output else None
+
+
 def remove_existing_files(output_file_path, duckdb_file_path, overwrite):
     if overwrite:
         if os.path.exists(output_file_path):
@@ -471,6 +504,9 @@ def process_benchmark(
                     'format': format,
                     #'execution_time': str(timedelta(seconds=execution_time)),
                     'execution_time': execution_time,
+                    'file_size_mb': benchmark_output_size_mb(
+                        input_path, output_directory, format
+                    ),
                 }
             )
     return results

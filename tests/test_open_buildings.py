@@ -8,6 +8,7 @@ import re
 import subprocess
 
 from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
+from open_buildings.google.process import benchmark_output_size_mb, output_size_mb
 from open_buildings.cli import geocode
 from open_buildings.settings import Source, Format, settings
 
@@ -141,6 +142,31 @@ def test_download_unknown_format(aoi: Dict[str, Any]):
     """ Tests that an unknown format (.abc) raises an Exception. """
     with pytest.raises(ValueError):
         download(aoi, dst="buildings.abc")
+
+def test_output_size_mb_counts_shapefile_sidecars(tmp_path: Path):
+    """ Tests that shapefile output size includes sidecar files. """
+    shp_file = tmp_path.joinpath("buildings.shp")
+    dbf_file = tmp_path.joinpath("buildings.dbf")
+    shx_file = tmp_path.joinpath("buildings.shx")
+    shp_file.write_bytes(b"a" * 1024)
+    dbf_file.write_bytes(b"b" * 2048)
+    shx_file.write_bytes(b"c" * 1024)
+
+    assert output_size_mb(str(shp_file)) == pytest.approx(4096 / (1024 * 1024))
+
+def test_benchmark_output_size_mb_sums_directory_outputs(tmp_path: Path):
+    """ Tests that benchmark output size sums outputs for directory inputs. """
+    input_dir = tmp_path.joinpath("inputs")
+    output_dir = tmp_path.joinpath("outputs")
+    input_dir.mkdir()
+    output_dir.mkdir()
+
+    input_dir.joinpath("a.csv").write_text("geometry\n")
+    input_dir.joinpath("b.csv").write_text("geometry\n")
+    output_dir.joinpath("a.fgb").write_bytes(b"a" * 1024)
+    output_dir.joinpath("b.fgb").write_bytes(b"b" * 2048)
+
+    assert benchmark_output_size_mb(str(input_dir), str(output_dir), "fgb") == pytest.approx(3072 / (1024 * 1024))
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
