@@ -142,6 +142,38 @@ def test_download_unknown_format(aoi: Dict[str, Any]):
     with pytest.raises(ValueError):
         download(aoi, dst="buildings.abc")
 
+def test_download_count_only_does_not_write_output(aoi: Dict[str, Any], tmp_path: Path, monkeypatch):
+    """ Tests that count-only mode returns a count without writing an output file. """
+    output_file = tmp_path.joinpath("existing.json")
+    output_file.write_text("keep me")
+
+    class FakeDuckDBConnection:
+        def __init__(self):
+            self.queries = []
+
+        def execute(self, query):
+            self.queries.append(query)
+            return self
+
+        def fetchone(self):
+            if "duckdb_extensions" in self.queries[-1]:
+                return ("spatial",)
+            if "COUNT(*)" in self.queries[-1]:
+                return (7,)
+            return None
+
+    fake_conn = FakeDuckDBConnection()
+    monkeypatch.setattr(
+        "open_buildings.download_buildings.duckdb.connect",
+        lambda database: fake_conn,
+    )
+
+    count = download(aoi, dst=output_file, country_iso="SC", count_only=True)
+
+    assert count == 7
+    assert output_file.read_text() == "keep me"
+    assert not any("COPY buildings TO" in query for query in fake_conn.queries)
+
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)
 def test_cli_get_buildings_from_file_to_directory(aoi: Dict[str, Any], tmp_path: Path):
