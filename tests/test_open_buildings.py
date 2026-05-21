@@ -7,7 +7,7 @@ from shapely.geometry import shape, box, mapping
 import re
 import subprocess
 
-from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
+from open_buildings.download_buildings import download, format_from_path, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
 from open_buildings.cli import geocode
 from open_buildings.settings import Source, Format, settings
 
@@ -141,6 +141,12 @@ def test_download_unknown_format(aoi: Dict[str, Any]):
     """ Tests that an unknown format (.abc) raises an Exception. """
     with pytest.raises(ValueError):
         download(aoi, dst="buildings.abc")
+
+def test_format_from_path_supports_geojson_suffix():
+    """Tests that GeoJSON can be requested with either common file suffix."""
+    assert format_from_path("buildings.json") == Format.GEOJSON
+    assert format_from_path("buildings.geojson") == Format.GEOJSON
+    assert format_from_path("buildings.foojson") is None
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)

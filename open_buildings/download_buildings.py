@@ -19,6 +19,25 @@ import shutil
 import osmnx
 from open_buildings.settings import Source, Format, settings
 
+FORMAT_EXTENSION_ALIASES = {
+    Format.GEOJSON: {"geojson"},
+}
+
+
+def format_from_path(path: Union[Path, str]) -> Optional[Format]:
+    suffix = Path(path).suffix.lower().lstrip(".")
+    if not suffix:
+        return None
+
+    for fmt, ext in settings.extensions.items():
+        valid_extensions = {ext.lower()}
+        valid_extensions.update(FORMAT_EXTENSION_ALIASES.get(fmt, set()))
+        if suffix in valid_extensions:
+            return fmt
+
+    return None
+
+
 def geojson_to_quadkey(data: dict) -> str:
     geom = shape(data["geometry"])
     min_lon, min_lat, max_lon, max_lat = geom.bounds
@@ -184,11 +203,8 @@ def download(
         dst = dst.joinpath(f"{dst.stem}.{settings.extensions[format]}")
 
     if not format and dst:
-        for fmt, ext in settings.extensions.items():
-            if dst.name.endswith(ext):
-                format = fmt
-                break
-        else:  # The for-else structure means the else block runs if the loop completes normally, without a break.
+        format = format_from_path(dst)
+        if format is None:
             raise ValueError(f"Can't identify file extension of {dst}. Please choose one of {', '.join([f.name.lower() for f in Format])}.")
     
     # utils (should be in separate utils file?)
