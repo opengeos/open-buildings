@@ -132,8 +132,9 @@ def benchmark(
         input_path, output_directory, processes, formats, not skip_split_multis, verbose
     )
 
-    df = pd.DataFrame(results)
-    df = df.pivot(index='process', columns='format', values='execution_time')
+    results_df = pd.DataFrame(results)
+    df = results_df.pivot(index='process', columns='format', values='execution_time')
+    size_df = results_df.pivot(index='process', columns='format', values='file_size_mb')
 
     base_name = os.path.basename(input_path)
     file_name, file_ext = os.path.splitext(base_name)
@@ -158,6 +159,14 @@ def benchmark(
 
             print(f"\nTable for file: {base_name}")
             print(tabulate(df_formatted, headers="keys", tablefmt="fancy_grid"))
+            if size_df.notna().any().any():
+                size_df_formatted = size_df.copy()
+                for column in size_df_formatted.columns:
+                    size_df_formatted[column] = size_df_formatted[column].apply(
+                        lambda x: "" if pd.isna(x) else f"{x:.2f}"
+                    )
+                print(f"\nOutput file sizes in MB for file: {base_name}")
+                print(tabulate(size_df_formatted, headers="keys", tablefmt="fancy_grid"))
         else:
             raise ValueError('Invalid output format')
 
