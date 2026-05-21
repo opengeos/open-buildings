@@ -7,7 +7,14 @@ from shapely.geometry import shape, box, mapping
 import re
 import subprocess
 
-from open_buildings.download_buildings import download, geojson_to_wkt, geojson_to_quadkey, quadkey_to_geojson
+from open_buildings.download_buildings import (
+    download,
+    geojson_to_wkt,
+    geojson_to_quadkey,
+    normalize_columns,
+    quadkey_to_geojson,
+    select_values_for_source,
+)
 from open_buildings.cli import geocode
 from open_buildings.settings import Source, Format, settings
 
@@ -141,6 +148,19 @@ def test_download_unknown_format(aoi: Dict[str, Any]):
     """ Tests that an unknown format (.abc) raises an Exception. """
     with pytest.raises(ValueError):
         download(aoi, dst="buildings.abc")
+
+def test_select_values_for_source_uses_overture_gis_defaults():
+    """ Tests that Overture GIS outputs keep the existing attribute defaults. """
+    assert select_values_for_source(Source.OVERTURE, Format.GEOJSON) == "id, level, height, numfloors, class, country_iso, quadkey"
+
+def test_select_values_for_source_accepts_user_columns():
+    """ Tests that users can select a subset of output attributes. """
+    assert select_values_for_source(Source.OVERTURE, Format.GEOJSON, "id, country_iso, geometry") == "id, country_iso"
+
+def test_normalize_columns_rejects_invalid_names():
+    """ Tests that invalid column names are rejected before SQL generation. """
+    with pytest.raises(ValueError):
+        normalize_columns("id, country_iso; DROP TABLE buildings")
 
 @pytest.mark.integration
 @pytest.mark.flaky(reruns=NUM_RERUNS)

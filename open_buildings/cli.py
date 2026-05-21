@@ -48,10 +48,11 @@ def geocode(data: str):
 @click.option('--location', type=str, default=None, help='Use city or region name instead of providing an AOI as file.')
 @click.option('--source', default="overture", type=click.Choice(['google', 'overture']), help='Dataset to query, defaults to Overture')
 @click.option('--country_iso', type=str, default=None, help='A 2 character country ISO code to filter the data by.')
+@click.option('--columns', type=str, default=None, help='Comma-separated output attribute columns to include.')
 @click.option('-s', '--silent', is_flag=True, default=False, help='Suppress all print outputs.')
 @click.option('--overwrite', default=False, is_flag=True, help='Overwrite the destination file if it already exists.')
 @click.option('-v', '--verbose', default=False, is_flag=True, help='Print detailed logs with timestamps.')
-def get_buildings(geojson_input, dst, location, source, country_iso, silent, overwrite, verbose):
+def get_buildings(geojson_input, dst, location, source, country_iso, columns, silent, overwrite, verbose):
     """Tool to extract buildings in common geospatial formats from large archives of GeoParquet data online. GeoJSON
     input can be provided as a file or piped in from stdin. If no GeoJSON input is provided, the tool will read from stdin.
 
@@ -85,7 +86,17 @@ def get_buildings(geojson_input, dst, location, source, country_iso, silent, ove
     else:
         geojson_data = json.load(click.get_text_stream('stdin'))
     
-    download_buildings(geojson_data, source=source, generate_sql=False, dst=dst, silent=silent, overwrite=overwrite, verbose=verbose, country_iso=country_iso)
+    download_buildings(
+        geojson_data,
+        source=source,
+        generate_sql=False,
+        dst=dst,
+        silent=silent,
+        overwrite=overwrite,
+        verbose=verbose,
+        country_iso=country_iso,
+        columns=columns,
+    )
 
 @google.command('benchmark')
 @click.argument('input_path', type=click.Path(exists=True))
