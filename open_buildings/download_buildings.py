@@ -2,7 +2,7 @@ import json
 import click
 from math import tan, cos, log, pi
 from shapely.geometry import shape, box, mapping
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, List
 import mercantile 
 import duckdb
 import time
@@ -17,7 +17,54 @@ import shapely
 import geojson
 import shutil
 import osmnx
+import re
 from open_buildings.settings import Source, Format, settings
+
+DEFAULT_OVERTURE_GIS_COLUMNS = (
+    "id",
+    "level",
+    "height",
+    "numfloors",
+    "class",
+    "country_iso",
+    "quadkey",
+)
+SQL_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def normalize_columns(columns: Optional[Union[str, List[str]]]) -> Optional[List[str]]:
+    if columns is None:
+        return None
+
+    if isinstance(columns, str):
+        columns = columns.split(",")
+
+    normalized = []
+    for column in columns:
+        column = column.strip()
+        if not column or column.lower() == "geometry":
+            continue
+        if not SQL_IDENTIFIER_PATTERN.match(column):
+            raise ValueError(
+                f"Invalid column name '{column}'. Column names may only contain letters, numbers, and underscores."
+            )
+        normalized.append(column)
+
+    return normalized or None
+
+
+def select_values_for_source(
+    source: Source, format: Optional[Format], columns: Optional[Union[str, List[str]]] = None
+) -> str:
+    normalized_columns = normalize_columns(columns)
+    if normalized_columns:
+        return ", ".join(normalized_columns)
+
+    if source == Source.OVERTURE and format != Format.PARQUET:
+        return ", ".join(DEFAULT_OVERTURE_GIS_COLUMNS)
+
+    return "* EXCLUDE geometry"
+
 
 def geojson_to_quadkey(data: dict) -> str:
     geom = shape(data["geometry"])
@@ -128,6 +175,7 @@ def download(
         source: Union[Source, str] = Source.OVERTURE,
         format: Optional[Union[Format, str]] = None, 
         country_iso: Optional[str] = None,
+        columns: Optional[Union[str, List[str]]] = None,
         *,
         generate_sql: bool = False, # whether to actually perform actions or just generate sql
         verbose: bool = False, # print detailed logs
@@ -150,6 +198,8 @@ def download(
         precedence.
     country_iso : str, optional
         A two-letter ISO-3166 code for the country the AOI (geojson_input) is in. Not required but massively speeds up queries.
+    columns : str | list[str], optional
+        Output attribute columns to include. Geometry is always included and does not need to be specified.
     generate_sql : bool, default False
         Whether to actually perform DuckDB queries or only generate the SQL.
     verbose : bool, default False
@@ -237,11 +287,7 @@ def download(
     # download data into DuckDB
     hive_partitioning = settings.sources[source].hive_partitioning
     hive_value = 1 if hive_partitioning else 0
-    select_values = "* EXCLUDE geometry"
-    # if source is overture and the output is not parquet, then name the values to get
-    # so we don't get the crazy structs that gis formats barf on
-    if source == Source.OVERTURE and format != Format.PARQUET:
-        select_values = "id, level, height, numfloors, class, country_iso, quadkey"
+    select_values = select_values_for_source(source, format, columns)
     base_sql = f"select {select_values}, ST_AsWKB(ST_GeomFromWKB(geometry)) AS geometry from read_parquet('{settings.sources[source].base_url}', hive_partitioning={hive_value})"
     where_clause = "WHERE "
     if country_iso:
